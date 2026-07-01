@@ -1,0 +1,47 @@
+.TH LTT 1 "2026-07-01" "Mint Mechanic 0.1.0" "User Commands"
+.SH NAME
+ltt \- Mint Mechanic, the maintained tune-up tool for Linux Mint
+.SH SYNOPSIS
+.B ltt
+.SH DESCRIPTION
+.B Mint Mechanic
+is a modern, Cinnamon-native successor to Stacer: a live system dashboard with
+animated CPU, RAM and disk gauges plus a GPU dial, married to the action
+features Mint does not ship.
+.PP
+It runs as the invoking user. Mutating actions (toggling services, cleaning,
+uninstalling, installing missing packages) elevate per-action via
+.BR pkexec (1);
+the application itself is never run as root.
+.SH VIEWS
+.TP
+.B Dashboard
+Live analog gauges for CPU, RAM, disk and GPU, with network, load and uptime
+readouts.
+.TP
+.B Services
+Enable or disable systemd services with live status.
+.TP
+.B Startup
+Toggle or remove per-user autostart entries.
+.TP
+.B Cleaner
+Reclaim space: APT cache, orphaned packages, thumbnails, Trash and old logs.
+.TP
+.B Uninstaller
+Search the manually-installed package set and remove or purge a selection.
+.TP
+.B Streamline
+Export the manually-installed package set to a portable manifest, or import one
+to diff against this machine and install what is missing.
+.SH FILES
+.TP
+.I /usr/share/mint-mechanic/ltt
+The application package.
+.SH SEE ALSO
+.BR pkexec (1),
+.BR systemctl (1)
+.SH AUTHOR
+Ron Craig (rclinux).
+.SH BUGS
+Report issues at https://github.com/rclinux/mint-mechanic

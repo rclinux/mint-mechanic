@@ -6,8 +6,9 @@ since 2019): a live system dashboard with animated **CPU / RAM / Disk gauges
 plus the GPU dial Stacer never had**, married to the *action* features Mint
 doesn't ship — and topped with package-profile export tied to disaster recovery.
 
-> Status: **Phase 0 (skeleton).** The app runs as a three-view shell; features
-> land phase by phase. Command: `ltt`.
+![Dashboard](images/dashboard.png)
+
+> Command: `ltt`. Linux Mint 22.x / Cinnamon, GTK 4.
 
 ## Why
 
@@ -21,16 +22,29 @@ doesn't ship — and topped with package-profile export tied to disaster recover
   read, and one-click launch into the sibling
   [disk-recovery-tool](https://github.com/rcraig57/disk-recovery-tool).
 
-## v1 scope (minimum-lovable)
+## Features
 
-1. **Dashboard** — live analog gauges: CPU, RAM, Disk, **GPU** (NVIDIA now; the
-   reader is behind a seam for a future AMD swap).
-2. **Services** — enable/disable systemd services with live status (the GUI Mint
-   lacks).
-3. **Streamline** — export/import your manually-installed package set.
+- **Dashboard** — live analog gauges for CPU, RAM, Disk, and **GPU** (NVIDIA
+  now; the reader is behind a seam for a future AMD swap), with network
+  throughput, load average and uptime readouts. The needle *eases* toward each
+  reading and the animation timer idles when the system is steady.
+- **Services** — enable/disable systemd services with live status (the GUI Mint
+  lacks). Unavailable units show "not installed" with the toggle disabled.
+- **Startup** — toggle or remove your per-user autostart entries.
+- **Cleaner** — reclaim space: APT cache, orphaned packages (deborphan),
+  thumbnail cache, Trash, and old system logs, each with a measured size.
+- **Uninstaller** — search the manually-installed package set and remove or
+  purge a selection.
+- **Streamline** — export your manually-installed package set to a portable,
+  timestamped manifest, or import one to diff against this machine and install
+  what's missing.
+- **Health strip** — a persistent GO / NO-GO band along the bottom: root disk,
+  failed units, pending updates and reboot-required, rolled up to one verdict.
 
-Later phases add Cleaner, Startup manager, Uninstaller, a health strip, and
-DRT/Dashboard launch integration.
+|  |  |
+|--|--|
+| ![Services](images/services.png) | ![Cleaner](images/cleaner.png) |
+| ![Streamline](images/streamline.png) | |
 
 ## Design principles
 
@@ -48,14 +62,36 @@ DRT/Dashboard launch integration.
 
 ## Requirements
 
-Python 3, GTK 4 + PyGObject, `psutil`. Optional: `nvidia-smi` for the GPU dial
-(absent → the dial simply hides). Linux Mint 22.x / Cinnamon.
+Python 3, GTK 4 + PyGObject, `python3-psutil`, and polkit (`pkexec`) for
+per-action elevation. Optional: `deborphan` (the Cleaner's orphaned-package
+task) and `nvidia-smi` for the GPU dial (absent → the dial simply hides). Linux
+Mint 22.x / Cinnamon.
 
-## Run (dev tree)
+## Install
+
+**Packaged (recommended)** — build a `.deb` and install it with apt (which pulls
+the dependencies):
+
+```bash
+./build-deb.sh
+sudo apt install ./dist/mint-mechanic_0.1.0_all.deb
+```
+
+**Make-install path** — the same system layout without building a package:
+
+```bash
+sudo ./install.sh      # installs dependencies + files
+sudo ./uninstall.sh    # removes them (leaves dependencies)
+```
+
+**Run from the dev tree** (no install):
 
 ```bash
 ./bin/ltt
 ```
+
+Launch with `ltt` or from your application menu. **Don't run it as root** — it
+elevates the individual mutating actions via pkexec itself.
 
 ## License
 

@@ -4,7 +4,12 @@ All notable changes to **Mint Mechanic** are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.0] - 2026-07-01
+
+First release. Mint Mechanic ships its full v1 feature set — Dashboard,
+Services, Startup, Cleaner, Uninstaller and Streamline views, plus the GO/NO-GO
+health strip and sibling-tool launch — together with packaging (a `.deb` build
+plus an `install.sh` make-install path), a man page, and an application icon.
 
 ### Changed
 - **Sibling-tool menu items are now always enabled and self-explaining.** Instead
@@ -31,6 +36,11 @@ to follow [Semantic Versioning](https://semver.org/).
   "re-measured" to make the automatic refresh obvious.
 
 ### Added
+- **Phase 6 — packaging.** A self-contained `.deb` builder (`build-deb.sh`,
+  version read from `config.py`, lintian-clean) and an `install.sh` /
+  `uninstall.sh` make-install path, both laying down the same system layout
+  (`/usr/share/mint-mechanic`, `/usr/bin/ltt`, the desktop entry and hicolor
+  icons). Adds a man page (`ltt(1)`) and README screenshots.
 - **Phase 5 — health strip + sibling-tool launch (feature set complete).**
   - A persistent **GO / NO-GO health strip** across the bottom of the window
     (`ltt/health.py` + `ltt/health_strip.py`): quick read-only checks — root

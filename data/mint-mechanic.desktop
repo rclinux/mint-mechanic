@@ -6,6 +6,6 @@ Comment=The maintained tune-up tool for Linux Mint
 Exec=ltt
 Icon=mint-mechanic
 Terminal=false
-Categories=System;Settings;GTK;
+Categories=System;GTK;
 Keywords=tweak;services;cleaner;dashboard;gauges;packages;streamline;stacer;
 StartupNotify=true

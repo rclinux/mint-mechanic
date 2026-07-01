@@ -13,9 +13,12 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
 
 from . import config  # noqa: E402
+from .cleaner_view import CleanerView  # noqa: E402
 from .dashboard import DashboardView  # noqa: E402
 from .services_view import ServicesView  # noqa: E402
+from .startup_view import StartupView  # noqa: E402
 from .streamline_view import StreamlineView  # noqa: E402
+from .uninstaller_view import UninstallerView  # noqa: E402
 
 
 class MintMechanicWindow(Gtk.ApplicationWindow):
@@ -37,6 +40,9 @@ class MintMechanicWindow(Gtk.ApplicationWindow):
 
         stack.add_titled(DashboardView(), "dashboard", "Dashboard")
         stack.add_titled(ServicesView(), "services", "Services")
+        stack.add_titled(StartupView(), "startup", "Startup")
+        stack.add_titled(CleanerView(), "cleaner", "Cleaner")
+        stack.add_titled(UninstallerView(), "uninstaller", "Uninstaller")
         stack.add_titled(StreamlineView(), "streamline", "Streamline")
 
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)

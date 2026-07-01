@@ -7,6 +7,19 @@ to follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Phase 4 — the action set (Cleaner, Startup, Uninstaller).**
+  - **Cleaner** (`ltt/cleaner.py` + view): pick reclaimable items — APT package
+    cache, orphaned packages (deborphan), thumbnail cache, Trash, old system
+    logs — each with a best-effort size measured off the UI thread. User-level
+    tasks run as you; selected root tasks are batched into a single pkexec call.
+    Commands are fixed/audited (no interpolation). Arch-only maintenance omitted.
+  - **Startup** (`ltt/startup.py` + view): toggle or remove `~/.config/autostart`
+    entries via `GLib.KeyFile` (user-level, no root).
+  - **Uninstaller** (`ltt/uninstaller_view.py`): search the manually-installed
+    set (from the apt seam) and remove/purge a selection via pkexec; search-
+    filtered for responsiveness with selection that persists across searches.
+  - `ltt/actions.py` gained `run_local()` (unprivileged async runner) alongside
+    `run_privileged()`.
 - **App icon.** A Mint-green tachometer-gauge icon (scalable SVG + 48/128/256
   PNG raster sizes under `data/icons/hicolor/…`), echoing the Dashboard gauges.
   The app registers the dev-tree icon path and sets it as the default window /

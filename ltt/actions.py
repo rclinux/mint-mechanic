@@ -33,14 +33,8 @@ def pkexec_available() -> bool:
     return shutil.which("pkexec") is not None
 
 
-def run_privileged(argv: list[str],
-                   on_done: Callable[[ActionResult], None] | None = None) -> None:
-    """Run `argv` (expected to start with pkexec) on a worker thread.
-
-    `on_done` is invoked on the GTK main loop with the ActionResult. pkexec exit
-    code 126 = the authorization dialog was dismissed/denied -> `cancelled`.
-    """
-
+def _run_async(argv: list[str], elevated: bool,
+               on_done: Callable[[ActionResult], None] | None) -> None:
     def worker() -> None:
         try:
             proc = subprocess.run(argv, capture_output=True, text=True, check=False)
@@ -49,7 +43,8 @@ def run_privileged(argv: list[str],
                 argv=argv,
                 stdout=proc.stdout,
                 stderr=proc.stderr,
-                cancelled=proc.returncode == 126,
+                # pkexec exit 126 = the polkit dialog was dismissed/denied
+                cancelled=elevated and proc.returncode == 126,
             )
         except OSError as exc:
             res = ActionResult(False, argv, stderr=str(exc))
@@ -57,3 +52,18 @@ def run_privileged(argv: list[str],
             GLib.idle_add(on_done, res)
 
     threading.Thread(target=worker, daemon=True).start()
+
+
+def run_privileged(argv: list[str],
+                   on_done: Callable[[ActionResult], None] | None = None) -> None:
+    """Run `argv` (expected to start with pkexec) on a worker thread.
+
+    `on_done` is invoked on the GTK main loop with the ActionResult.
+    """
+    _run_async(argv, elevated=True, on_done=on_done)
+
+
+def run_local(argv: list[str],
+              on_done: Callable[[ActionResult], None] | None = None) -> None:
+    """Run an unprivileged `argv` off the UI thread (same result contract)."""
+    _run_async(argv, elevated=False, on_done=on_done)

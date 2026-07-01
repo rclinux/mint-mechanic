@@ -15,6 +15,7 @@ from gi.repository import Gtk  # noqa: E402
 from . import config  # noqa: E402
 from .cleaner_view import CleanerView  # noqa: E402
 from .dashboard import DashboardView  # noqa: E402
+from .health_strip import HealthStrip  # noqa: E402
 from .services_view import ServicesView  # noqa: E402
 from .startup_view import StartupView  # noqa: E402
 from .streamline_view import StreamlineView  # noqa: E402
@@ -45,17 +46,34 @@ class MintMechanicWindow(Gtk.ApplicationWindow):
         stack.add_titled(UninstallerView(), "uninstaller", "Uninstaller")
         stack.add_titled(StreamlineView(), "streamline", "Streamline")
 
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        box.append(sidebar)
-        box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
+        content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, vexpand=True)
+        content.append(sidebar)
+        content.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
         stack.set_hexpand(True)
-        box.append(stack)
-        self.set_child(box)
+        content.append(stack)
+
+        # Outer: content over a persistent GO/NO-GO health strip.
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        outer.append(content)
+        outer.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+        outer.append(HealthStrip())
+        self.set_child(outer)
 
 
 _MENU_XML = """
 <interface>
   <menu id="primary-menu">
+    <section>
+      <attribute name="label">Sibling tools</attribute>
+      <item>
+        <attribute name="label">Disk Recovery Tool</attribute>
+        <attribute name="action">app.launch-drt</attribute>
+      </item>
+      <item>
+        <attribute name="label">Workstation Dashboard</attribute>
+        <attribute name="action">app.launch-dashboard</attribute>
+      </item>
+    </section>
     <section>
       <item>
         <attribute name="label">About Mint Mechanic</attribute>

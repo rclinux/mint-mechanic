@@ -7,6 +7,15 @@ to follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Phase 5 — health strip + sibling-tool launch (feature set complete).**
+  - A persistent **GO / NO-GO health strip** across the bottom of the window
+    (`ltt/health.py` + `ltt/health_strip.py`): quick read-only checks — root
+    disk usage, failed systemd units (benign live-ISO units filtered), pending
+    updates, and reboot-required — as colored pills rolling up to one verdict,
+    refreshed off the UI thread.
+  - **Sibling-tool launch** (`ltt/tools.py`): menu items that open
+    disk-recovery-tool and workstation-dashboard when installed (detached), and
+    are disabled when they aren't — integration by launch, never by merge.
 - **Phase 4 — the action set (Cleaner, Startup, Uninstaller).**
   - **Cleaner** (`ltt/cleaner.py` + view): pick reclaimable items — APT package
     cache, orphaned packages (deborphan), thumbnail cache, Trash, old system

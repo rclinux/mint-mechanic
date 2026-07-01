@@ -15,7 +15,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, Gio, Gtk  # noqa: E402
 
-from . import config  # noqa: E402
+from . import config, tools  # noqa: E402
 from .window import MintMechanicWindow  # noqa: E402
 
 
@@ -45,6 +45,18 @@ class MintMechanicApp(Gtk.Application):
         about = Gio.SimpleAction.new("about", None)
         about.connect("activate", self._on_about)
         self.add_action(about)
+
+        # Sibling-tool launches — enabled only when the tool is installed (P2:
+        # integrate by launch, never by merge).
+        self._add_launch_action("launch-drt", tools.drt_command)
+        self._add_launch_action("launch-dashboard", tools.dashboard_command)
+
+    def _add_launch_action(self, name, resolver) -> None:
+        action = Gio.SimpleAction.new(name, None)
+        command = resolver()
+        action.set_enabled(command is not None)
+        action.connect("activate", lambda _a, _p, c=command: tools.launch(c))
+        self.add_action(action)
 
     def do_activate(self) -> None:
         if self._window is None:

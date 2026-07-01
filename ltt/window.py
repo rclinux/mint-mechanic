@@ -13,11 +13,10 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
 
 from . import config  # noqa: E402
+from .dashboard import DashboardView  # noqa: E402
 
-# The v1 views: (stack-name, sidebar title, icon, placeholder note).
-_VIEWS = (
-    ("dashboard", "Dashboard", "utilities-system-monitor-symbolic",
-     "Live CPU · RAM · Disk · GPU gauges — Phase 1."),
+# Views still awaiting their real implementation: (name, title, icon, note).
+_PLACEHOLDERS = (
     ("services", "Services", "preferences-system-symbolic",
      "Enable/disable system services — Phase 2."),
     ("streamline", "Streamline", "document-save-symbolic",
@@ -42,7 +41,8 @@ class MintMechanicWindow(Gtk.ApplicationWindow):
         sidebar = Gtk.StackSidebar(stack=stack)
         sidebar.set_size_request(180, -1)
 
-        for name, title, icon, note in _VIEWS:
+        stack.add_titled(DashboardView(), "dashboard", "Dashboard")
+        for name, title, icon, note in _PLACEHOLDERS:
             stack.add_titled(_placeholder(title, icon, note), name, title)
 
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)

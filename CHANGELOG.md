@@ -7,6 +7,17 @@ to follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Phase 1 — the Dashboard (signature screen).** Live animated **analog
+  gauges** for CPU, RAM, Disk, and the **GPU dial** Stacer never had, drawn on
+  Cairo (`ltt/gauges.py`): a 270° dial with tick marks, a load-colored value arc
+  (green→amber→red), and a swinging needle that *eases* toward each reading —
+  the animation timer only runs while the needle moves, so a steady system costs
+  nothing. Theme-aware (needle/text/ticks follow the Cinnamon light/dark
+  foreground). Below the gauges, a compact readouts strip: network throughput,
+  load average, and uptime (`ltt/dashboard.py`). Polled once per second via a
+  single GLib timeout that tears down with the view. The GPU dial is added only
+  when a GPU reader is present (graceful degradation). `ltt/metrics.py` gained
+  network-rate, load-average, and uptime readers.
 - **Phase 0 — skeleton.** Runnable GTK4 app shell: main window with a sidebar
   and a stack of the three v1 views (Dashboard, Services, Streamline) as
   placeholders, plus an About dialog. Establishes the architecture seams with

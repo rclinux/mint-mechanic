@@ -11,8 +11,10 @@ All reads are read-only and need no root.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 
 try:
@@ -37,12 +39,24 @@ class GpuReading:
     mem_total_mb: float | None
 
 
+@dataclass(frozen=True)
+class Extras:
+    """The compact live readouts under the gauges."""
+    net_down_bps: float
+    net_up_bps: float
+    load1: float
+    load5: float
+    load15: float
+    uptime: str
+
+
 class MetricsReader:
     """One instance polled by the Dashboard's GLib timeout loop."""
 
     def __init__(self) -> None:
         self._have_psutil = psutil is not None
         self._nvidia_smi = shutil.which("nvidia-smi")
+        self._net_last: tuple[int, int, float] | None = None  # recv, sent, ts
 
     def cpu(self) -> Gauge:
         if not self._have_psutil:
@@ -75,6 +89,45 @@ class MetricsReader:
         if r.mem_used_mb is not None and r.mem_total_mb:
             detail += f"  {r.mem_used_mb/1024:.1f}/{r.mem_total_mb/1024:.1f} GiB"
         return Gauge("GPU", r.percent, detail.strip())
+
+    def extras(self) -> Extras:
+        """Network throughput (since the last call), load average, and uptime."""
+        down, up = self._net_rates()
+        try:
+            l1, l5, l15 = os.getloadavg()
+        except OSError:
+            l1 = l5 = l15 = 0.0
+        return Extras(down, up, l1, l5, l15, self._uptime())
+
+    def _net_rates(self) -> tuple[float, float]:
+        if not self._have_psutil:
+            return (0.0, 0.0)
+        io = psutil.net_io_counters()
+        now = time.monotonic()
+        if self._net_last is None:
+            self._net_last = (io.bytes_recv, io.bytes_sent, now)
+            return (0.0, 0.0)
+        lr, ls, lt = self._net_last
+        dt = max(now - lt, 1e-6)
+        self._net_last = (io.bytes_recv, io.bytes_sent, now)
+        return (max((io.bytes_recv - lr) / dt, 0.0),
+                max((io.bytes_sent - ls) / dt, 0.0))
+
+    def _uptime(self) -> str:
+        if self._have_psutil:
+            secs = int(time.time() - psutil.boot_time())
+        else:
+            try:
+                with open("/proc/uptime") as fh:
+                    secs = int(float(fh.read().split()[0]))
+            except OSError:
+                return "—"
+        d, rem = divmod(secs, 86400)
+        h, rem = divmod(rem, 3600)
+        m, _ = divmod(rem, 60)
+        if d:
+            return f"{d}d {h}h {m}m"
+        return f"{h}h {m}m" if h else f"{m}m"
 
     def _read_nvidia(self) -> GpuReading | None:
         if not self._nvidia_smi:

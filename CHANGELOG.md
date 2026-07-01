@@ -7,6 +7,10 @@ to follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **App icon.** A Mint-green tachometer-gauge icon (scalable SVG + 48/128/256
+  PNG raster sizes under `data/icons/hicolor/…`), echoing the Dashboard gauges.
+  The app registers the dev-tree icon path and sets it as the default window /
+  About-dialog icon, so it shows even before install.
 - **Phase 3 — the Streamline view (v1 core complete).** Export the
   manually-installed package set to a portable, timestamped manifest, and import
   one to diff against this machine — listing what's missing and offering to

@@ -6,15 +6,30 @@ per-action via pkexec (never a blanket-root app). Phase 0 is read-only shell.
 
 from __future__ import annotations
 
+import os
 import sys
 
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gio, Gtk  # noqa: E402
+gi.require_version("Gdk", "4.0")
+from gi.repository import Gdk, Gio, Gtk  # noqa: E402
 
 from . import config  # noqa: E402
 from .window import MintMechanicWindow  # noqa: E402
+
+
+def _register_icons() -> None:
+    """Show our app icon even from the dev tree (uninstalled).
+
+    Once installed the icon lives in the system hicolor theme; in the dev tree
+    it sits under repo/data/icons, so add that to the theme search path.
+    """
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    icons = os.path.join(repo_root, "data", "icons")
+    display = Gdk.Display.get_default()
+    if display is not None and os.path.isdir(icons):
+        Gtk.IconTheme.get_for_display(display).add_search_path(icons)
 
 
 class MintMechanicApp(Gtk.Application):
@@ -25,6 +40,8 @@ class MintMechanicApp(Gtk.Application):
 
     def do_startup(self) -> None:
         Gtk.Application.do_startup(self)
+        _register_icons()
+        Gtk.Window.set_default_icon_name(config.APP_ICON)
         about = Gio.SimpleAction.new("about", None)
         about.connect("activate", self._on_about)
         self.add_action(about)
@@ -36,6 +53,7 @@ class MintMechanicApp(Gtk.Application):
 
     def _on_about(self, _action, _param) -> None:
         dlg = Gtk.AboutDialog(transient_for=self._window, modal=True)
+        dlg.set_logo_icon_name(config.APP_ICON)
         dlg.set_program_name(config.APP_NAME)
         dlg.set_version(config.APP_VERSION)
         dlg.set_comments(config.APP_TAGLINE)

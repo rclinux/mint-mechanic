@@ -8,7 +8,7 @@ change: config.py + packaging + CHANGELOG + git tag).
 APP_NAME = "Mint Mechanic"
 APP_ID = "io.github.rclinux.MintMechanic"
 APP_ICON = "mint-mechanic"
-APP_COMMAND = "ltt"
+APP_COMMAND = "mint-mechanic"
 APP_VERSION = "0.1.0"
 APP_TAGLINE = "The maintained tune-up tool for Linux Mint"
 APP_WEBSITE = "https://github.com/rclinux/mint-mechanic"

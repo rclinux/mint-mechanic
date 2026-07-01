@@ -5,7 +5,7 @@
 # Mint Mechanic is functionally Mint/Ubuntu (apt) software, so this installer
 # targets the debian family. It installs the runtime dependencies with apt and
 # copies the application into the system layout the launcher and config already
-# expect (/usr/share/mint-mechanic, /usr/bin/ltt, the desktop entry and icons).
+# expect (/usr/share/mint-mechanic, /usr/bin/mint-mechanic, desktop entry, icons).
 #
 # For a packaged install instead, build the .deb:   ./build-deb.sh   then
 #   sudo apt install ./dist/mint-mechanic_<version>_all.deb
@@ -33,8 +33,8 @@ die()  { printf '%s[x]%s %s\n' "$C_RED$C_BOLD"   "$C_RESET" "$*" >&2; exit 1; }
 
 # Locate the source tree (this script lives at the repo root).
 SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-[[ -d "$SRC/ltt" && -f "$SRC/bin/ltt" ]] \
-  || die "Run this from the project root (ltt/ and bin/ltt not found)."
+[[ -d "$SRC/ltt" && -f "$SRC/bin/mint-mechanic" ]] \
+  || die "Run this from the project root (ltt/ and bin/mint-mechanic not found)."
 
 # --------------------------------------------------------------------------- #
 # 1. Confirm the debian family. Mint, Ubuntu and Debian all qualify.
@@ -80,13 +80,13 @@ for f in "$SRC"/ltt/*.py; do
 done
 
 # Launcher and desktop entry.
-install -Dm755 "$SRC/bin/ltt" /usr/bin/ltt
+install -Dm755 "$SRC/bin/mint-mechanic" /usr/bin/mint-mechanic
 install -Dm644 "$SRC/data/mint-mechanic.desktop" /usr/share/applications/mint-mechanic.desktop
 
 # Man page.
-if [[ -f "$SRC/data/ltt.1" ]]; then
-  tmpgz="$(mktemp)"; gzip -9nc "$SRC/data/ltt.1" > "$tmpgz"
-  install -Dm644 "$tmpgz" /usr/share/man/man1/ltt.1.gz; rm -f "$tmpgz"
+if [[ -f "$SRC/data/mint-mechanic.1" ]]; then
+  tmpgz="$(mktemp)"; gzip -9nc "$SRC/data/mint-mechanic.1" > "$tmpgz"
+  install -Dm644 "$tmpgz" /usr/share/man/man1/mint-mechanic.1.gz; rm -f "$tmpgz"
 fi
 
 # Icons (scalable SVG + raster sizes), mirroring the source hicolor tree.
@@ -108,6 +108,6 @@ update-desktop-database -q 2>/dev/null || true
 
 ok "Mint Mechanic installed."
 echo
-echo "  Launch:  ltt   (or 'Mint Mechanic' from your application menu)"
+echo "  Launch:  mint-mechanic   (or 'Mint Mechanic' from your application menu)"
 echo "  Do NOT run it as root — mutating actions elevate per-action via pkexec."
 echo "  Uninstall:  sudo $SRC/uninstall.sh"

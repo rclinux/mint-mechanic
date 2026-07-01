@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 #
-# ltt — launcher for Mint Mechanic.
+# mint-mechanic — launcher for Mint Mechanic.
 #
 # Runs the app AS THE USER (no root). Individual mutating actions elevate
 # themselves per-action via pkexec from inside the app; the launcher never does.
 #
-# Works from the dev tree (repo/bin/ltt -> repo/ltt) and from a system install
-# (/usr/bin/ltt -> /usr/share/mint-mechanic/ltt), matching the DRT convention.
+# Works from the dev tree (repo/bin/mint-mechanic -> repo/ltt) and from a system
+# install (/usr/bin/mint-mechanic -> /usr/share/mint-mechanic/ltt), matching the
+# DRT convention. ('ltt' below is the internal Python package/import name.)
 set -euo pipefail
 
 here="$(cd -- "$(dirname -- "$(readlink -f -- "$0")")" && pwd)"
@@ -17,5 +18,5 @@ for root in "$here/.." "/usr/share/mint-mechanic"; do
   fi
 done
 
-echo "[ltt] ERROR: could not locate the 'ltt' package (dev tree or /usr/share/mint-mechanic)." >&2
+echo "[mint-mechanic] ERROR: could not locate the 'ltt' package (dev tree or /usr/share/mint-mechanic)." >&2
 exit 1

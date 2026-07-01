@@ -31,7 +31,7 @@ echo "==> Staging ${PKG} ${VERSION} into $STAGE"
 install -dm755 "$STAGE/usr/share/mint-mechanic/ltt"
 for f in ltt/*.py; do install -m644 "$f" "$STAGE/usr/share/mint-mechanic/ltt/"; done
 
-install -Dm755 bin/ltt                      "$STAGE/usr/bin/ltt"
+install -Dm755 bin/mint-mechanic            "$STAGE/usr/bin/mint-mechanic"
 install -Dm644 data/mint-mechanic.desktop   "$STAGE/usr/share/applications/mint-mechanic.desktop"
 
 for size in scalable 48x48 128x128 256x256; do
@@ -42,8 +42,8 @@ for size in scalable 48x48 128x128 256x256; do
 done
 
 # Man page (gzip -n for a reproducible, timestamp-free archive).
-gzip -9nc data/ltt.1 > "$STAGE/tmp.gz"
-install -Dm644 "$STAGE/tmp.gz" "$STAGE/usr/share/man/man1/ltt.1.gz"
+gzip -9nc data/mint-mechanic.1 > "$STAGE/tmp.gz"
+install -Dm644 "$STAGE/tmp.gz" "$STAGE/usr/share/man/man1/mint-mechanic.1.gz"
 rm -f "$STAGE/tmp.gz"
 
 # --- Documentation --------------------------------------------------------- #

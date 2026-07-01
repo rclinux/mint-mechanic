@@ -8,7 +8,7 @@ doesn't ship — and topped with package-profile export tied to disaster recover
 
 ![Dashboard](images/dashboard.png)
 
-> Command: `ltt`. Linux Mint 22.x / Cinnamon, GTK 4.
+> Command: `mint-mechanic`. Linux Mint 22.x / Cinnamon, GTK 4.
 
 ## Why
 
@@ -87,11 +87,11 @@ sudo ./uninstall.sh    # removes them (leaves dependencies)
 **Run from the dev tree** (no install):
 
 ```bash
-./bin/ltt
+./bin/mint-mechanic
 ```
 
-Launch with `ltt` or from your application menu. **Don't run it as root** — it
-elevates the individual mutating actions via pkexec itself.
+Launch with `mint-mechanic` or from your application menu. **Don't run it as
+root** — it elevates the individual mutating actions via pkexec itself.
 
 ## License
 

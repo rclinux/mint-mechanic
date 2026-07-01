@@ -6,6 +6,16 @@ to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **Sibling-tool menu items are now always enabled and self-explaining.** Instead
+  of greying out when a companion tool isn't installed, each item reads
+  "Launch <tool>" when present and "Get <tool>…" when not. Choosing a "Get" item
+  opens a small dialog explaining the tool with **Open project page** (browser to
+  the repo) and **Copy install command** (the `git clone … && sudo ./install.sh`
+  line) — so the option is discoverable without Mint Mechanic ever downloading or
+  running a remote installer itself. (`ltt/tools.py` gained per-tool metadata;
+  the menu is now built in code with dynamic labels.)
+
 ### Fixed
 - **Cleaner sizes now measure contents, not the enclosing directory.** APT cache,
   Trash, and the thumbnail cache read **"empty"** once cleared, instead of the

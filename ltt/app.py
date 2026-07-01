@@ -13,7 +13,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
-from gi.repository import Gdk, Gio, Gtk  # noqa: E402
+from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from . import config, tools  # noqa: E402
 from .window import MintMechanicWindow  # noqa: E402
@@ -46,17 +46,42 @@ class MintMechanicApp(Gtk.Application):
         about.connect("activate", self._on_about)
         self.add_action(about)
 
-        # Sibling-tool launches — enabled only when the tool is installed (P2:
-        # integrate by launch, never by merge).
-        self._add_launch_action("launch-drt", tools.drt_command)
-        self._add_launch_action("launch-dashboard", tools.dashboard_command)
+        # Sibling-tool items stay enabled: launch when installed, otherwise
+        # offer to install (P2: integrate by launch, never by merge).
+        for tool in tools.SIBLINGS:
+            action = Gio.SimpleAction.new(f"sibling-{tool.key}", None)
+            action.connect("activate", lambda _a, _p, t=tool: self._on_sibling(t))
+            self.add_action(action)
 
-    def _add_launch_action(self, name, resolver) -> None:
-        action = Gio.SimpleAction.new(name, None)
-        command = resolver()
-        action.set_enabled(command is not None)
-        action.connect("activate", lambda _a, _p, c=command: tools.launch(c))
-        self.add_action(action)
+    def _on_sibling(self, tool: tools.SiblingTool) -> None:
+        command = tool.installed_command()
+        if command:
+            tools.launch(command)
+        else:
+            self._show_get_dialog(tool)
+
+    def _show_get_dialog(self, tool: tools.SiblingTool) -> None:
+        dlg = Gtk.AlertDialog()
+        dlg.set_modal(True)
+        dlg.set_message(f"{tool.name} isn't installed")
+        dlg.set_detail(
+            f"{tool.blurb}\n\nIt's a separate companion tool. Open its project "
+            f"page for instructions, or copy the install command to a terminal.")
+        dlg.set_buttons(["Open project page", "Copy install command", "Close"])
+        dlg.set_default_button(0)
+        dlg.set_cancel_button(2)
+        dlg.choose(self._window, None,
+                   lambda d, r, t=tool: self._on_get_response(d, r, t))
+
+    def _on_get_response(self, dlg, result, tool: tools.SiblingTool) -> None:
+        try:
+            choice = dlg.choose_finish(result)
+        except GLib.Error:
+            return  # dismissed
+        if choice == 0:
+            Gtk.UriLauncher.new(tool.repo_url).launch(self._window, None, None)
+        elif choice == 1:
+            self._window.get_clipboard().set(tool.install_command)
 
     def do_activate(self) -> None:
         if self._window is None:

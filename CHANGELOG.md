@@ -7,6 +7,15 @@ to follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Phase 2 — the Services view.** Enable/disable systemd services with live
+  status — the GUI Mint doesn't ship (`ltt/services_view.py`). Each row is built
+  from a `registry.ServiceRow` by one generic builder (adding a service is
+  adding a data row). State reads run as the user; a toggle elevates per-action
+  via **pkexec** with `--now` (enables at boot *and* starts/stops now), and a
+  dismissed polkit prompt cleanly reverts the switch. Unavailable units show
+  "not installed" with the toggle disabled. New shared `ltt/actions.py` runs
+  privileged commands off the UI thread (worker thread → `GLib.idle_add`), the
+  single elevation seam the package operations will reuse.
 - **Phase 1 — the Dashboard (signature screen).** Live animated **analog
   gauges** for CPU, RAM, Disk, and the **GPU dial** Stacer never had, drawn on
   Cairo (`ltt/gauges.py`): a 270° dial with tick marks, a load-colored value arc

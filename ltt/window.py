@@ -14,11 +14,10 @@ from gi.repository import Gtk  # noqa: E402
 
 from . import config  # noqa: E402
 from .dashboard import DashboardView  # noqa: E402
+from .services_view import ServicesView  # noqa: E402
 
 # Views still awaiting their real implementation: (name, title, icon, note).
 _PLACEHOLDERS = (
-    ("services", "Services", "preferences-system-symbolic",
-     "Enable/disable system services — Phase 2."),
     ("streamline", "Streamline", "document-save-symbolic",
      "Export/import your package profile — Phase 3."),
 )
@@ -42,6 +41,7 @@ class MintMechanicWindow(Gtk.ApplicationWindow):
         sidebar.set_size_request(180, -1)
 
         stack.add_titled(DashboardView(), "dashboard", "Dashboard")
+        stack.add_titled(ServicesView(), "services", "Services")
         for name, title, icon, note in _PLACEHOLDERS:
             stack.add_titled(_placeholder(title, icon, note), name, title)
 

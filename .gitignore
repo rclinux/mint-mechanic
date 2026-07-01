@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Editor / OS
+*.swp
+*~
+.DS_Store
+
+# Local build artifacts
+/build/
+/dist/
+*.deb

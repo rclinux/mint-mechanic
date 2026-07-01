@@ -7,13 +7,18 @@ to follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
-- **Cleaner: Trash now runs last and reports "empty" correctly.** Selected root
-  tasks run first, then user tasks with Trash forced last, so an emptied Trash
-  also clears anything discarded earlier in the run. The Trash size now measures
-  the trashed *contents* (reads "empty" when there's nothing) instead of the few
-  KB of the empty Trash directory tree, and the empty command also clears the
+- **Cleaner sizes now measure contents, not the enclosing directory.** APT cache,
+  Trash, and the thumbnail cache read **"empty"** once cleared, instead of the
+  leftover KBs of an emptied-but-unshrunk directory inode (an ext4 quirk: a
+  directory that once held thousands of files keeps its own allocated size — e.g.
+  a cleaned APT `archives/` still `du`'d to 68K, an emptied Trash to 16K). The
+  measurements now sum the actual files (`.deb`s, trashed items, thumbnail
+  files). (Reported by Ron.)
+- **Cleaner: Trash now runs last.** Selected root tasks run first, then user
+  tasks with Trash forced last, so an emptied Trash also clears anything
+  discarded earlier in the run. The empty command also clears the
   `directorysizes`/`expunged` bookkeeping. Completion status now says
-  "re-measured" to make the automatic refresh obvious. (Reported by Ron.)
+  "re-measured" to make the automatic refresh obvious.
 
 ### Added
 - **Phase 5 — health strip + sibling-tool launch (feature set complete).**

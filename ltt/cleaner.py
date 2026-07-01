@@ -39,10 +39,26 @@ def _sh(cmd: str) -> str:
         return ""
 
 
+_HOME = os.path.expanduser("~")
+_TRASH = os.path.join(_HOME, ".local/share/Trash")
+
+
 def _du(path: str) -> str:
     if not os.path.exists(path):
         return "empty"
     return _sh(f"du -sh {path!r} 2>/dev/null | cut -f1") or "—"
+
+
+def _trash_measure() -> str:
+    """Report the trashed *contents*, so an emptied Trash reads 'empty' rather
+    than the few KB of its own (empty) directory tree and bookkeeping files."""
+    files = os.path.join(_TRASH, "files")
+    try:
+        if not os.path.isdir(files) or not os.listdir(files):
+            return "empty"
+    except OSError:
+        return "—"
+    return _du(_TRASH)
 
 
 _MEASURES = {
@@ -50,12 +66,10 @@ _MEASURES = {
     "orphans": lambda: (f"{n} pkgs" if (n := _sh('deborphan 2>/dev/null | wc -l'))
                         not in ("", "0") else "none"),
     "thumbnails": lambda: _du(os.path.expanduser("~/.cache/thumbnails")),
-    "trash": lambda: _du(os.path.expanduser("~/.local/share/Trash")),
+    "trash": _trash_measure,
     "journal": lambda: (_sh("journalctl --disk-usage 2>/dev/null "
                             "| grep -oE '[0-9.]+[KMGT]?B' | tail -1") or "—"),
 }
-
-_HOME = os.path.expanduser("~")
 
 TASKS: tuple[CleanTask, ...] = (
     CleanTask("apt_cache", "APT package cache",
@@ -70,8 +84,12 @@ TASKS: tuple[CleanTask, ...] = (
               f"rm -rf {_HOME}/.cache/thumbnails/*"),
     CleanTask("trash", "Trash",
               "Files in your desktop Trash.", False,
-              f"rm -rf {_HOME}/.local/share/Trash/files/* "
-              f"{_HOME}/.local/share/Trash/info/*"),
+              # -mindepth 1 empties the contents (incl. bookkeeping) without a
+              # dangerous glob; runs LAST so it also catches anything discarded
+              # during this run.
+              f"find {_TRASH}/files {_TRASH}/info {_TRASH}/expunged "
+              f"-mindepth 1 -delete 2>/dev/null; "
+              f"rm -f {_TRASH}/directorysizes 2>/dev/null; true"),
     CleanTask("journal", "Old system logs",
               "Vacuum the systemd journal to the last 7 days.", True,
               "journalctl --vacuum-time=7d"),

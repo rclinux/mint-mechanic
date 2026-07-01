@@ -128,17 +128,16 @@ class CleanerView(Gtk.Box):
             self._status.set_text("pkexec not found — cannot run root cleanups.")
             return
         self._busy = True
+        self._ok = True
         self._clean_btn.set_sensitive(False)
         self._status.set_text("Cleaning…")
 
-        user_cmds = [t.command for t in selected if not t.root]
+        # Run the root batch first, then user tasks with Trash forced LAST, so an
+        # emptied Trash also catches anything discarded earlier in the run.
         self._root_cmds = [t.command for t in selected if t.root]
-        if user_cmds:
-            run_local(["bash", "-c", "; ".join(user_cmds)], self._after_user)
-        else:
-            self._run_root()
-
-    def _after_user(self, _res: ActionResult) -> None:
+        user_tasks = sorted((t for t in selected if not t.root),
+                            key=lambda t: t.key == "trash")
+        self._user_cmds = [t.command for t in user_tasks]
         self._run_root()
 
     def _run_root(self) -> None:
@@ -146,10 +145,23 @@ class CleanerView(Gtk.Box):
             run_privileged(["pkexec", "bash", "-c", "; ".join(self._root_cmds)],
                            self._after_root)
         else:
-            self._finish(cancelled=False, ok=True)
+            self._run_user()
 
     def _after_root(self, res: ActionResult) -> None:
-        self._finish(cancelled=res.cancelled, ok=res.ok)
+        if res.cancelled:
+            self._finish(cancelled=True, ok=False)
+            return
+        self._ok = self._ok and res.ok
+        self._run_user()
+
+    def _run_user(self) -> None:
+        if self._user_cmds:
+            run_local(["bash", "-c", "; ".join(self._user_cmds)], self._after_user)
+        else:
+            self._finish(cancelled=False, ok=self._ok)
+
+    def _after_user(self, res: ActionResult) -> None:
+        self._finish(cancelled=False, ok=self._ok and res.ok)
 
     def _finish(self, cancelled: bool, ok: bool) -> None:
         self._busy = False
@@ -159,7 +171,7 @@ class CleanerView(Gtk.Box):
         if cancelled:
             self._status.set_text("Cancelled.")
         elif ok:
-            self._status.set_text("Done.")
+            self._status.set_text("Done — re-measured.")
         else:
-            self._status.set_text("Some cleanups reported an error.")
+            self._status.set_text("Completed with some errors — re-measured.")
         self._measure_async()

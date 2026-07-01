@@ -6,6 +6,15 @@ to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Cleaner: Trash now runs last and reports "empty" correctly.** Selected root
+  tasks run first, then user tasks with Trash forced last, so an emptied Trash
+  also clears anything discarded earlier in the run. The Trash size now measures
+  the trashed *contents* (reads "empty" when there's nothing) instead of the few
+  KB of the empty Trash directory tree, and the empty command also clears the
+  `directorysizes`/`expunged` bookkeeping. Completion status now says
+  "re-measured" to make the automatic refresh obvious. (Reported by Ron.)
+
 ### Added
 - **Phase 5 — health strip + sibling-tool launch (feature set complete).**
   - A persistent **GO / NO-GO health strip** across the bottom of the window

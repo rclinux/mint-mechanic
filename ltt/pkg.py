@@ -40,6 +40,9 @@ class PackageBackend:
     def list_manual(self) -> list[str]:
         raise NotImplementedError
 
+    def installed_set(self) -> set[str]:
+        raise NotImplementedError
+
     def is_installed(self, pkg: str) -> bool:
         raise NotImplementedError
 
@@ -62,6 +65,19 @@ class AptBackend(PackageBackend):
             capture_output=True, text=True, check=False,
         )
         return sorted(p for p in out.stdout.split() if p)
+
+    def installed_set(self) -> set[str]:
+        """All currently-installed package names, in one call (for import diffs)."""
+        out = subprocess.run(
+            ["dpkg-query", "-W", "-f=${db:Status-Status} ${Package}\n"],
+            capture_output=True, text=True, check=False,
+        )
+        installed = set()
+        for line in out.stdout.splitlines():
+            status, _, name = line.partition(" ")
+            if status == "installed" and name:
+                installed.add(name)
+        return installed
 
     def is_installed(self, pkg: str) -> bool:
         out = subprocess.run(

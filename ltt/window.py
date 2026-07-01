@@ -1,8 +1,8 @@
-"""Main window: a sidebar + a stack of views.
+"""Main window: a sidebar + a stack of the three v1 views.
 
-Phase 0 ships the shell only — the three v1 views (Dashboard, Services,
-Streamline) are placeholders that prove the structure. Each later phase
-replaces one placeholder with the real view; the window itself won't change.
+Dashboard (live gauges), Services (systemctl toggles), and Streamline (package
+profiles) are all live. Later phases add more views to the same stack without
+touching this shell.
 """
 
 from __future__ import annotations
@@ -15,12 +15,7 @@ from gi.repository import Gtk  # noqa: E402
 from . import config  # noqa: E402
 from .dashboard import DashboardView  # noqa: E402
 from .services_view import ServicesView  # noqa: E402
-
-# Views still awaiting their real implementation: (name, title, icon, note).
-_PLACEHOLDERS = (
-    ("streamline", "Streamline", "document-save-symbolic",
-     "Export/import your package profile — Phase 3."),
-)
+from .streamline_view import StreamlineView  # noqa: E402
 
 
 class MintMechanicWindow(Gtk.ApplicationWindow):
@@ -42,8 +37,7 @@ class MintMechanicWindow(Gtk.ApplicationWindow):
 
         stack.add_titled(DashboardView(), "dashboard", "Dashboard")
         stack.add_titled(ServicesView(), "services", "Services")
-        for name, title, icon, note in _PLACEHOLDERS:
-            stack.add_titled(_placeholder(title, icon, note), name, title)
+        stack.add_titled(StreamlineView(), "streamline", "Streamline")
 
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         box.append(sidebar)
@@ -51,28 +45,6 @@ class MintMechanicWindow(Gtk.ApplicationWindow):
         stack.set_hexpand(True)
         box.append(stack)
         self.set_child(box)
-
-
-def _placeholder(title: str, icon: str, note: str) -> Gtk.Widget:
-    """A centered icon + title + note — a view's Phase-0 stand-in."""
-    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-    box.set_valign(Gtk.Align.CENTER)
-    box.set_halign(Gtk.Align.CENTER)
-    box.set_hexpand(True)
-    box.set_vexpand(True)
-
-    img = Gtk.Image.new_from_icon_name(icon)
-    img.set_pixel_size(64)
-    box.append(img)
-
-    heading = Gtk.Label()
-    heading.set_markup(f"<span size='x-large' weight='bold'>{title}</span>")
-    box.append(heading)
-
-    sub = Gtk.Label(label=note)
-    sub.add_css_class("dim-label")
-    box.append(sub)
-    return box
 
 
 _MENU_XML = """

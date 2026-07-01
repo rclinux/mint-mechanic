@@ -7,6 +7,13 @@ to follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Phase 3 — the Streamline view (v1 core complete).** Export the
+  manually-installed package set to a portable, timestamped manifest, and import
+  one to diff against this machine — listing what's missing and offering to
+  install it (`ltt/streamline_view.py`). Uses GTK4 `Gtk.FileDialog` for
+  save/open; the diff is one `dpkg-query` via the new `pkg.installed_set()`; any
+  install routes through the apt seam and elevates via the shared pkexec runner.
+  This closes the minimum-lovable v1 trio (Dashboard + Services + Streamline).
 - **Phase 2 — the Services view.** Enable/disable systemd services with live
   status — the GUI Mint doesn't ship (`ltt/services_view.py`). Each row is built
   from a `registry.ServiceRow` by one generic builder (adding a service is

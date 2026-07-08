@@ -20,7 +20,7 @@ doesn't ship — and topped with package-profile export tied to disaster recover
 - Differentiators neither Stacer nor Mint has: **Streamline** package profiles
   (a portable bill-of-materials for from-scratch rebuilds), a GO/NO-GO health
   read, and one-click launch into the sibling
-  [disk-recovery-tool](https://github.com/rcraig57/disk-recovery-tool).
+  [disk-recovery-tool](https://github.com/rclinux/disk-recovery-tool).
 
 ## Features
 

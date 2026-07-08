@@ -36,9 +36,9 @@ SIBLINGS: tuple[SiblingTool, ...] = (
         key="drt",
         name="Disk Recovery Tool",
         commands=("recovery-tool",),
-        repo_url="https://github.com/rcraig57/disk-recovery-tool",
+        repo_url="https://github.com/rclinux/disk-recovery-tool",
         install_command=(
-            "git clone https://github.com/rcraig57/disk-recovery-tool && "
+            "git clone https://github.com/rclinux/disk-recovery-tool && "
             "cd disk-recovery-tool && sudo ./install.sh"),
         blurb="Full-disk backup & restore with partclone — the heavy, "
               "root-level job, kept in its own app.",

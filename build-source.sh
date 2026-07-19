@@ -53,7 +53,27 @@ EXCLUDES=(-I.git -I.github/workflows/__pycache__ -Idist -I.pytest_cache
           -I.ruff_cache -I__pycache__ -I'*.pyc' -I'*.deb')
 
 if [[ $SIGN -eq 1 ]]; then
-  dpkg-buildpackage -S "${EXCLUDES[@]}"
+  # Select the signing key explicitly.
+  #
+  # By default dpkg-buildpackage asks gpg for a key whose user ID equals the
+  # changelog's whole Maintainer string ("Ron Craig (rclinux) <a@b>"). That only
+  # works if the GPG uid happens to carry the same display name, which is rarely
+  # true -- a key created as "rcraig <a@b>" fails with "No secret key" even
+  # though the right key is sitting in the keyring. Match on the email instead,
+  # which is the part that actually identifies the uploader.
+  MAINT_EMAIL="$(dpkg-parsechangelog -S Maintainer | sed -n 's/.*<\(.*\)>.*/\1/p')"
+  KEY="${MINT_MECHANIC_SIGNING_KEY:-}"
+  if [[ -z "$KEY" ]]; then
+    KEY="$(gpg --list-secret-keys --with-colons "$MAINT_EMAIL" 2>/dev/null \
+           | awk -F: '/^fpr:/ {print $10; exit}')"
+  fi
+  if [[ -z "$KEY" ]]; then
+    echo "No secret key found for <$MAINT_EMAIL>." >&2
+    echo "Set MINT_MECHANIC_SIGNING_KEY=<fingerprint> or import the key." >&2
+    exit 1
+  fi
+  echo "==> Signing with $KEY"
+  dpkg-buildpackage -S "-k$KEY" "${EXCLUDES[@]}"
 else
   dpkg-buildpackage -S -us -uc "${EXCLUDES[@]}"
 fi

@@ -34,7 +34,10 @@ doesn't ship — and topped with package-profile export tied to disaster recover
   lacks). Unavailable units show "not installed" with the toggle disabled.
 - **Startup** — toggle or remove your per-user autostart entries.
 - **Cleaner** — reclaim space: APT cache, orphaned packages (deborphan),
-  thumbnail cache, Trash, and old system logs, each with a measured size.
+  thumbnail cache, Trash, and old system logs, each with a measured size. The
+  orphan purge always shows you apt's **full** removal cascade first and refuses
+  outright if it would take your desktop, login manager or graphics driver with
+  it — `deborphan`'s shortlist is not the real blast radius.
 - **Uninstaller** — search the manually-installed package set and remove or
   purge a selection.
 - **Streamline** — export your manually-installed package set to a portable,
@@ -76,7 +79,7 @@ the dependencies):
 
 ```bash
 ./build-deb.sh
-sudo apt install ./dist/mint-mechanic_0.2.0_all.deb
+sudo apt install ./dist/mint-mechanic_0.3.0_all.deb
 ```
 
 **Make-install path** — the same system layout without building a package:

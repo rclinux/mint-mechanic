@@ -55,6 +55,7 @@ class CleanerView(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self._rows: list[_TaskRow] = []
         self._busy = False
+        self._orphan_note = ""
 
         header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         header.set_margin_top(14)
@@ -130,14 +131,106 @@ class CleanerView(Gtk.Box):
         self._busy = True
         self._ok = True
         self._clean_btn.set_sensitive(False)
-        self._status.set_text("Cleaning…")
 
         # Run the root batch first, then user tasks with Trash forced LAST, so an
         # emptied Trash also catches anything discarded earlier in the run.
-        self._root_cmds = [t.command for t in selected if t.root]
+        self._root_cmds = [t.command for t in selected
+                           if t.root and not t.confirm and t.command]
         user_tasks = sorted((t for t in selected if not t.root),
                             key=lambda t: t.key == "trash")
         self._user_cmds = [t.command for t in user_tasks]
+
+        # Tasks that remove packages must show their real blast radius first.
+        confirm_tasks = [t for t in selected if t.confirm]
+        if confirm_tasks:
+            self._status.set_text("Checking what would be removed…")
+            self._begin_orphan_preview()
+            return
+
+        self._status.set_text("Cleaning…")
+        self._run_root()
+
+    # ------------------------------------------------- previewed package purge
+    def _begin_orphan_preview(self) -> None:
+        """Compute the true removal set off-thread, then decide (see cleaner.py).
+
+        Never purge from deborphan's list directly: it names ~27 libraries, but
+        apt's cascade removed 179 packages including the desktop environment.
+        """
+        def work() -> None:
+            candidates = cleaner.orphan_list()
+            preview = cleaner.purge_preview(candidates)
+            failed = cleaner.purge_preview_failed(candidates, preview)
+            critical = cleaner.critical_in(preview)
+            GLib.idle_add(self._orphan_previewed, candidates, preview,
+                          critical, failed)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _orphan_previewed(self, candidates: list[str], preview: list[str],
+                          critical: list[str], failed: bool) -> None:
+        if failed:
+            # An empty preview for a non-empty request means the simulation
+            # failed, not that there is nothing to do. Never proceed on that.
+            self._finish_orphans(
+                "Could not determine what would be removed — orphan purge "
+                "skipped.")
+            return
+        if not candidates or not preview:
+            self._finish_orphans("No orphaned packages to remove.")
+            return
+        if critical:
+            shown = ", ".join(critical[:4])
+            more = f" and {len(critical) - 4} more" if len(critical) > 4 else ""
+            self._finish_orphans(
+                f"Refused: removing these orphans would also remove "
+                f"{shown}{more} — your desktop or graphics stack. Nothing done.")
+            return
+        self._confirm_orphans(candidates, preview)
+
+    def _confirm_orphans(self, candidates: list[str], preview: list[str]) -> None:
+        extra = len(preview) - len(candidates)
+        detail = (f"{len(candidates)} orphaned packages were found, but removing "
+                  f"them would remove {len(preview)} packages in total"
+                  + (f" ({extra} additional through dependencies)" if extra > 0
+                     else "") + ".\n\n"
+                  + ", ".join(preview[:40])
+                  + (f"\n\n…and {len(preview) - 40} more."
+                     if len(preview) > 40 else ""))
+        dlg = Gtk.AlertDialog()
+        dlg.set_modal(True)
+        dlg.set_message(f"Remove {len(preview)} packages?")
+        dlg.set_detail(detail)
+        dlg.set_buttons(["Cancel", "Remove them"])
+        dlg.set_default_button(0)
+        dlg.set_cancel_button(0)
+        dlg.choose(self.get_root(), None,
+                   lambda d, r: self._on_orphan_choice(d, r, candidates))
+
+    def _on_orphan_choice(self, dlg, result, candidates: list[str]) -> None:
+        try:
+            choice = dlg.choose_finish(result)
+        except GLib.Error:
+            choice = 0
+        if choice != 1:
+            self._finish_orphans("Orphan purge cancelled.")
+            return
+        self._status.set_text("Removing orphaned packages…")
+        run_privileged(cleaner.orphan_purge_argv(candidates),
+                       self._after_orphans)
+
+    def _after_orphans(self, res: ActionResult) -> None:
+        if res.cancelled:
+            self._finish_orphans("Orphan purge cancelled.")
+            return
+        self._ok = self._ok and res.ok
+        self._status.set_text("Cleaning…")
+        self._run_root()
+
+    def _finish_orphans(self, message: str) -> None:
+        """Report on the orphan step, then continue with the other tasks."""
+        self._status.set_text(message)
+        self._orphan_note = message
         self._run_root()
 
     def _run_root(self) -> None:
@@ -169,9 +262,15 @@ class CleanerView(Gtk.Box):
         for r in self._rows:
             r.check.set_active(False)
         if cancelled:
-            self._status.set_text("Cancelled.")
+            msg = "Cancelled."
         elif ok:
-            self._status.set_text("Done — re-measured.")
+            msg = "Done — re-measured."
         else:
-            self._status.set_text("Completed with some errors — re-measured.")
+            msg = "Completed with some errors — re-measured."
+        # A refusal or skip from the orphan step is the most important thing
+        # that happened; never let a generic "Done" bury it.
+        if self._orphan_note:
+            msg = f"{self._orphan_note}  {msg}"
+            self._orphan_note = ""
+        self._status.set_text(msg)
         self._measure_async()

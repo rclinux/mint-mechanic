@@ -4,6 +4,41 @@ All notable changes to **Mint Mechanic** are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-07-19
+
+An urgent safety release. **Anyone running 0.2.0 or earlier should update before
+using the Cleaner's orphaned-packages task.**
+
+### Security
+- **The Cleaner's "Orphaned packages" task could destroy your desktop.** It ran
+  `deborphan | xargs -r apt-get -y purge` unattended: no preview, no
+  confirmation, `-y` auto-approving everything. `deborphan` lists libraries with
+  no reverse dependencies, which sounds safe — but purging them *cascades*, and
+  apt removes every package depending on them too.
+
+  On a live Mint 22.3 desktop this turned 27 "orphans" into **179 removed
+  packages**, including `cinnamon`, `cinnamon-session`, `cinnamon-settings-daemon`,
+  `mint-meta-cinnamon`, `mint-meta-core`, `mintupdate`, `nvidia-driver-595-open`
+  and `gir1.2-gtk-4.0` — the desktop environment and the graphics stack — from a
+  single checkbox and one password prompt. The running session survived only
+  because it was already in memory; a reboot would have come up with no desktop.
+
+  The task now computes apt's **real** removal set with `apt-get -s purge`,
+  shows it in full, and requires explicit confirmation. If that set contains
+  anything session-critical (desktop, login manager, graphics driver, systemd,
+  NetworkManager) it is **refused outright** rather than confirmed. A preview
+  that cannot be computed is treated as a failure and blocks the purge — never
+  as "nothing to remove", which is the same empty result read the dangerous way.
+
+  Note that an Essential/Priority guard would not have helped: `cinnamon` is
+  `Priority: optional, Essential: no`. The protection has to be the real
+  cascade, not package metadata.
+
+### Added
+- 29 regression tests covering the orphan path specifically: cascade reporting,
+  the `Purg`/`Remv` prefix distinction, refusal of session-critical removals,
+  and the untrustworthy-preview case.
+
 ## [0.2.0] - 2026-07-19
 
 A security and hardening release. No new features; two real defects fixed in the

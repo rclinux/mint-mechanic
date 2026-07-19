@@ -25,16 +25,17 @@ class CleanTask:
     root: bool          # needs elevation
     command: str        # fixed shell command (run via bash -c)
     available: bool = True
+    confirm: bool = False   # must show its true blast radius and be confirmed
 
     def measure(self) -> str:
         """Best-effort human size/count for the UI; never raises."""
         return _MEASURES.get(self.key, lambda: "")()
 
 
-def _sh(cmd: str) -> str:
+def _sh(cmd: str, timeout: int = 8) -> str:
     try:
         out = subprocess.run(["bash", "-c", cmd], capture_output=True,
-                             text=True, timeout=8, check=False)
+                             text=True, timeout=timeout, check=False)
         return out.stdout.strip()
     except (subprocess.SubprocessError, OSError):
         return ""
@@ -109,9 +110,11 @@ TASKS: tuple[CleanTask, ...] = (
               "Downloaded .deb archives in /var/cache/apt.", True,
               "apt-get clean"),
     CleanTask("orphans", "Orphaned packages",
-              "Libraries no longer needed by anything (deborphan).", True,
-              "deborphan | xargs -r apt-get -y purge",
-              available=shutil.which("deborphan") is not None),
+              "Libraries no longer needed by anything (deborphan). "
+              "Shows exactly what would be removed before doing anything.", True,
+              "",  # built at run time from a confirmed, previewed set
+              available=shutil.which("deborphan") is not None,
+              confirm=True),
     CleanTask("thumbnails", "Thumbnail cache",
               "Cached image thumbnails (regenerated on demand).", False,
               # The directory is quoted; the glob stays outside the quotes so
@@ -135,3 +138,101 @@ TASKS: tuple[CleanTask, ...] = (
 
 def tasks() -> tuple[CleanTask, ...]:
     return TASKS
+
+
+# --------------------------------------------------------------- orphan purge
+#
+# This path exists because the naive version of this task did real damage. It
+# used to run, unattended and unconfirmed:
+#
+#     deborphan | xargs -r apt-get -y purge
+#
+# deborphan lists libraries with no reverse dependencies, which sounds safe. But
+# purging them *cascades*: apt also removes everything depending on them. On a
+# live Mint 22.3 desktop, 27 "orphans" cascaded into 179 removed packages,
+# including cinnamon, cinnamon-session, mint-meta-cinnamon, mint-meta-core, the
+# NVIDIA driver and gir1.2-gtk-4.0 -- i.e. the desktop environment and the
+# graphics stack, silently, behind one checkbox and one password prompt.
+#
+# Note that a priority/essential guard would NOT have caught it: cinnamon is
+# Priority: optional, Essential: no. The only honest protection is to compute
+# the real removal set with apt's own dry run and put it in front of the user,
+# plus a hard refusal when session-critical packages appear in it.
+
+# Packages whose removal would cost you your desktop, your login manager or your
+# graphics driver. Matched as prefixes against the full cascade.
+_CRITICAL_PREFIXES = (
+    "cinnamon", "mint-meta-", "mint-common", "mintsystem", "mintdesktop",
+    "nemo", "muffin", "xserver-xorg", "lightdm", "mdm", "gdm3", "sddm",
+    "nvidia-driver", "xorg", "mesa-", "systemd", "network-manager",
+)
+
+
+def orphan_list() -> list[str]:
+    """deborphan's candidates, normalised and validated.
+
+    deborphan prints `name:arch` (e.g. `ftp:all`); the arch qualifier is
+    stripped so names can be validated the same way every other package name
+    in this app is.
+    """
+    from .pkg import partition_names
+
+    raw = _sh("deborphan 2>/dev/null").split()
+    names = [n.split(":", 1)[0] for n in raw if n.strip()]
+    good, _bad = partition_names(names)
+    return sorted(set(good))
+
+
+def purge_preview(pkgs: list[str]) -> list[str]:
+    """Every package apt would actually remove -- the true blast radius.
+
+    Uses apt's own simulation, so the cascade is apt's answer rather than our
+    guess. Returns the full removal set, which is normally much larger than
+    `pkgs`.
+    """
+    from .pkg import validate_names
+
+    if not pkgs:
+        return []
+    validate_names(pkgs)
+    # apt's simulation marks a purge with `Purg <name>` and a plain removal with
+    # `Remv <name>`; accept both. Getting this prefix wrong is dangerous in the
+    # worst direction -- an unmatched prefix yields an EMPTY preview, which reads
+    # to the user as "nothing will be removed" immediately before apt removes
+    # everything. The preview is only a safeguard if it can never silently
+    # under-report, so purge_preview_failed() distinguishes "nothing to do" from
+    # "could not determine", and the view refuses to proceed on the latter.
+    out = _sh("apt-get -s purge -- " + " ".join(shlex.quote(p) for p in pkgs),
+              timeout=60)
+    removed = []
+    for line in out.splitlines():
+        if line.startswith(("Purg ", "Remv ")):
+            parts = line.split()
+            if len(parts) > 1:
+                removed.append(parts[1])
+    return sorted(set(removed))
+
+
+def purge_preview_failed(pkgs: list[str], preview: list[str]) -> bool:
+    """True when a preview cannot be trusted, so the caller must not proceed.
+
+    Asking to purge real packages and being told nothing would be removed means
+    the simulation failed (apt missing, timeout, output format changed) rather
+    than that the operation is a no-op.
+    """
+    return bool(pkgs) and not preview
+
+
+def critical_in(removals: list[str]) -> list[str]:
+    """Session-critical packages inside a removal set (empty == safe to offer)."""
+    hits = [p for p in removals
+            if any(p.startswith(pre) for pre in _CRITICAL_PREFIXES)]
+    return sorted(set(hits))
+
+
+def orphan_purge_argv(pkgs: list[str]) -> list[str]:
+    """Elevated argv for a purge the user has seen in full and confirmed."""
+    from .pkg import validate_names
+
+    validate_names(pkgs)
+    return ["pkexec", "apt-get", "purge", "-y", "--", *pkgs]

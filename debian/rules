@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+# Mint Mechanic is a pure-Python/GTK application with no build step: debhelper
+# only has to install the tree. Packaging metadata lives here and nowhere else
+# (build-deb.sh delegates to this), so the .deb and the PPA can never disagree.
+
+%:
+	dh $@
+
+override_dh_auto_build:
+override_dh_auto_test:

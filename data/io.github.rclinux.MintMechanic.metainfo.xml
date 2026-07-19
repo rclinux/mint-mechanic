@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Ron Craig (rclinux) -->
+<component type="desktop-application">
+  <id>io.github.rclinux.MintMechanic</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>Mint Mechanic</name>
+  <summary>The maintained tune-up tool for Linux Mint</summary>
+
+  <developer id="io.github.rclinux">
+    <name>Ron Craig</name>
+  </developer>
+
+  <description>
+    <p>
+      Mint Mechanic is a modern, Cinnamon-native successor to Stacer: a live
+      system dashboard with animated CPU, RAM and disk gauges plus a GPU dial,
+      married to the maintenance actions Linux Mint does not ship.
+    </p>
+    <p>
+      It deliberately stays out of the system-information lane that Mint already
+      covers, and works in the action and optimization space instead.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Dashboard with live analog gauges for CPU, RAM, disk and GPU, plus network throughput, load average and uptime</li>
+      <li>Services — enable or disable systemd services with live status</li>
+      <li>Startup — manage your per-user autostart entries</li>
+      <li>Cleaner — reclaim space from the APT cache, orphaned packages, thumbnails, Trash and old system logs</li>
+      <li>Uninstaller — search your manually-installed packages and remove them</li>
+      <li>Streamline — export your installed package set as a portable profile, or import one to see what is missing</li>
+      <li>A persistent GO/NO-GO health strip covering disk, failed units, pending updates and reboot-required</li>
+    </ul>
+    <p>
+      Mint Mechanic never runs as root. Reads happen as your own user, and each
+      individual action that changes the system elevates on its own through
+      polkit. Anything that removes packages shows you what APT would actually
+      remove — including everything pulled in through dependencies — and asks
+      you to confirm, refusing outright if the removal would take your desktop,
+      login manager or graphics driver with it.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">mint-mechanic.desktop</launchable>
+
+  <url type="homepage">https://github.com/rclinux/mint-mechanic</url>
+  <url type="bugtracker">https://github.com/rclinux/mint-mechanic/issues</url>
+  <url type="vcs-browser">https://github.com/rclinux/mint-mechanic</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>The dashboard, with live CPU, RAM, disk and GPU gauges</caption>
+      <image>https://raw.githubusercontent.com/rclinux/mint-mechanic/main/images/dashboard.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Enabling and disabling system services</caption>
+      <image>https://raw.githubusercontent.com/rclinux/mint-mechanic/main/images/services.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Reclaiming disk space with the cleaner</caption>
+      <image>https://raw.githubusercontent.com/rclinux/mint-mechanic/main/images/cleaner.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Exporting a portable package profile with Streamline</caption>
+      <image>https://raw.githubusercontent.com/rclinux/mint-mechanic/main/images/streamline.png</image>
+    </screenshot>
+  </screenshots>
+
+  <categories>
+    <category>System</category>
+    <category>Settings</category>
+  </categories>
+
+  <keywords>
+    <keyword>tweak</keyword>
+    <keyword>services</keyword>
+    <keyword>cleaner</keyword>
+    <keyword>dashboard</keyword>
+    <keyword>gauges</keyword>
+    <keyword>packages</keyword>
+    <keyword>stacer</keyword>
+    <keyword>maintenance</keyword>
+  </keywords>
+
+  <provides>
+    <binary>mint-mechanic</binary>
+  </provides>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.5.0" date="2026-07-19">
+      <description>
+        <p>
+          Published to a PPA so updates arrive through the normal system update
+          process, and added AppStream metadata so the app lists in software
+          centres. Packaging moved to a standard Debian source package.
+        </p>
+      </description>
+    </release>
+    <release version="0.4.0" date="2026-07-19">
+      <description>
+        <p>
+          Adds a removal preview and confirmation to the Uninstaller, and moves
+          the shared removal guard into the single package seam so the Cleaner
+          and Uninstaller cannot diverge.
+        </p>
+      </description>
+    </release>
+    <release version="0.3.0" date="2026-07-19">
+      <description>
+        <p>
+          Safety fix: the Cleaner's orphaned-package task now shows APT's real
+          removal cascade, requires confirmation, and refuses removals that
+          would take session-critical packages.
+        </p>
+      </description>
+    </release>
+    <release version="0.2.0" date="2026-07-19">
+      <description>
+        <p>
+          Security fix for package-name handling when importing a Streamline
+          profile, corrected path quoting in the Cleaner, and the addition of a
+          test suite and continuous integration.
+        </p>
+      </description>
+    </release>
+    <release version="0.1.0" date="2026-07-01">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

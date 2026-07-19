@@ -4,6 +4,37 @@ All notable changes to **Mint Mechanic** are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-07-19
+
+Distribution release. Mint Mechanic now has an update channel — the thing that
+turns "maintained" from an intention into a fact.
+
+### Added
+- **Published to `ppa:rclinux/mint-mechanic`.** Installing from the PPA means
+  fixes arrive through normal system updates. Every release before this one was
+  download-only: anyone who installed 0.1.0 had no way to learn about, or
+  receive, the security and safety fixes in 0.2.0 through 0.4.0. Launchpad
+  builds and signs packages from published source, so the signing key never
+  touches a build server.
+- **AppStream metainfo** (`data/io.github.rclinux.MintMechanic.metainfo.xml`),
+  so the application lists properly in software centres with description,
+  screenshots and release notes.
+- `build-source.sh` for producing (optionally signed) source uploads.
+- Tests asserting the app version, `debian/changelog`, man page, README install
+  line and AppStream release entries can never disagree — the version now lives
+  in more than one file, so nothing but a test keeps them honest.
+
+### Changed
+- **Packaging converted to a standard Debian source package.** `debian/` is now
+  the single source of packaging truth and `build-deb.sh` is a thin wrapper
+  around `dpkg-buildpackage`, so a local `.deb` and a PPA build are produced
+  from identical rules. The previous hand-rolled builder maintained its own
+  control file and file list — a second description of the package that could
+  drift from the first.
+- CI now validates the AppStream metadata, builds **both** the binary and the
+  source package, and lints them with `--fail-on warning`. A green binary build
+  alone would not have told us a PPA upload would succeed.
+
 ## [0.4.0] - 2026-07-19
 
 Closes the last unguarded package-removal path, and moves the guard itself to

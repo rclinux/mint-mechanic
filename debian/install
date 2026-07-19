@@ -1,0 +1,8 @@
+ltt/*.py                                                usr/share/mint-mechanic/ltt
+bin/mint-mechanic                                       usr/bin
+data/mint-mechanic.desktop                              usr/share/applications
+data/io.github.rclinux.MintMechanic.metainfo.xml        usr/share/metainfo
+data/icons/hicolor/scalable/apps/mint-mechanic.svg      usr/share/icons/hicolor/scalable/apps
+data/icons/hicolor/48x48/apps/mint-mechanic.png         usr/share/icons/hicolor/48x48/apps
+data/icons/hicolor/128x128/apps/mint-mechanic.png       usr/share/icons/hicolor/128x128/apps
+data/icons/hicolor/256x256/apps/mint-mechanic.png       usr/share/icons/hicolor/256x256/apps

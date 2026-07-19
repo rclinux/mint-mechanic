@@ -1,0 +1,31 @@
+Source: mint-mechanic
+Section: admin
+Priority: optional
+Maintainer: Ron Craig (rclinux) <rcraig.netmail@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/rclinux/mint-mechanic
+Vcs-Browser: https://github.com/rclinux/mint-mechanic
+Vcs-Git: https://github.com/rclinux/mint-mechanic.git
+Rules-Requires-Root: no
+
+Package: mint-mechanic
+Architecture: all
+Depends: ${misc:Depends},
+         gir1.2-gtk-4.0,
+         libgtk-4-1,
+         pkexec,
+         python3,
+         python3-gi,
+         python3-psutil
+Recommends: deborphan
+Description: maintained tune-up tool for Linux Mint
+ A modern, Cinnamon-native successor to Stacer: a live system dashboard with
+ animated CPU / RAM / Disk gauges plus a GPU dial, married to the action
+ features Mint does not ship (services, cleaner, startup manager, uninstaller)
+ and a package-profile export tied to disaster recovery.
+ .
+ Mint Mechanic never runs as root. Reads run as the user and each mutating
+ action elevates on its own via polkit (pkexec). Anything that removes packages
+ shows APT's real removal cascade, requires confirmation, and refuses outright
+ when the removal would take the desktop, login manager or graphics driver.

@@ -38,13 +38,24 @@ jobs:
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg-dev lintian
+          sudo apt-get install -y dpkg-dev debhelper devscripts lintian appstream
 
-      - name: Build
+      - name: Validate AppStream metainfo
+        run: appstreamcli validate data/io.github.rclinux.MintMechanic.metainfo.xml
+
+      - name: Build binary package
         run: ./build-deb.sh
 
-      - name: Lint the package
-        run: lintian --tag-display-limit 0 dist/*.deb
+      - name: Lint the binary package
+        run: lintian --fail-on warning --tag-display-limit 0 dist/*.deb
+
+      # The PPA uploads a SOURCE package, so a green binary build is not enough
+      # to know the upload will succeed. Build and lint it here too.
+      - name: Build source package
+        run: ./build-source.sh
+
+      - name: Lint the source package
+        run: lintian --fail-on warning --tag-display-limit 0 ../mint-mechanic_*_source.changes
 
       - uses: actions/upload-artifact@v7
         with:

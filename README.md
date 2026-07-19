@@ -76,12 +76,28 @@ Mint 22.x / Cinnamon.
 
 ## Install
 
-**Packaged (recommended)** — build a `.deb` and install it with apt (which pulls
-the dependencies):
+**From the PPA (recommended)** — you get updates, including security fixes,
+through your normal system updates:
+
+```bash
+sudo add-apt-repository ppa:rclinux/mint-mechanic
+sudo apt update
+sudo apt install mint-mechanic
+```
+
+Mint 22.x is built on Ubuntu 24.04 "noble", which is what the PPA targets.
+
+> **Why a PPA rather than a downloaded `.deb`?** A downloaded package has no
+> update path — if a security fix ships, nothing tells you and nothing installs
+> it. Through the PPA, fixes arrive with your regular updates. Launchpad builds
+> and signs the packages from published source, so the maintainer's signing key
+> never touches a build server.
+
+**Build a `.deb` yourself** — no PPA required, but no automatic updates either:
 
 ```bash
 ./build-deb.sh
-sudo apt install ./dist/mint-mechanic_0.4.0_all.deb
+sudo apt install ./dist/mint-mechanic_0.5.0_all.deb
 ```
 
 **Make-install path** — the same system layout without building a package:
@@ -103,9 +119,19 @@ root** — it elevates the individual mutating actions via pkexec itself.
 ## Development
 
 ```bash
-pytest -q          # test suite (no display or PyGObject needed)
-ruff check .       # lint
-./build-deb.sh     # build the package
+pytest -q            # test suite (no display or PyGObject needed)
+ruff check .         # lint
+./build-deb.sh       # build a binary .deb locally
+./build-source.sh    # build a source package for the PPA
+```
+
+Packaging metadata lives in `debian/` and nowhere else — `build-deb.sh` is a
+thin wrapper around `dpkg-buildpackage`, so a local build and a PPA build cannot
+disagree. Releasing to the PPA:
+
+```bash
+./build-source.sh --sign
+dput ppa:rclinux/mint-mechanic ../mint-mechanic_<version>_source.changes
 ```
 
 The suite covers the backend seams — the apt abstraction, profile export/import,

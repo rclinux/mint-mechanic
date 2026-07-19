@@ -11,9 +11,9 @@ jobs:
     name: Lint and test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -33,7 +33,7 @@ jobs:
     name: Build .deb
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install packaging tools
         run: |
@@ -44,9 +44,9 @@ jobs:
         run: ./build-deb.sh
 
       - name: Lint the package
-        run: lintian --no-tag-display-limit dist/*.deb
+        run: lintian --tag-display-limit 0 dist/*.deb
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mint-mechanic-deb
           path: dist/*.deb

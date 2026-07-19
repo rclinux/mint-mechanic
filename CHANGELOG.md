@@ -4,6 +4,22 @@ All notable changes to **Mint Mechanic** are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-07-19
+
+### Fixed
+- **Long text was cut off at the right edge instead of wrapping.** GTK labels are
+  a single unwrapped line by default, so anything longer than the row clipped
+  silently — with no ellipsis to even hint text was missing. Reported against the
+  Cleaner's "Orphaned packages" description, whose text grew in 0.3.0.
+
+  This mattered beyond appearance: the same unwrapped labels carry the
+  **removal-refusal messages**. A refusal that reads "Refused: removing these
+  orphans would also remove cinnamon, cinnamon-common," and then stops hides the
+  reason the operation was refused. Descriptions and status lines across the
+  Cleaner, Services, Uninstaller, Streamline and Startup views now wrap.
+- The Cleaner's status read "Nothing done.  Done — re-measured." when the orphan
+  step was the only selected task; its message now stands alone.
+
 ## [0.5.0] - 2026-07-19
 
 Distribution release. Mint Mechanic now has an update channel — the thing that

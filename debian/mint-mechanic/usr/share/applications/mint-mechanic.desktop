@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Mint Mechanic
+GenericName=System Tune-Up Tool
+Comment=The maintained tune-up tool for Linux Mint
+Exec=mint-mechanic
+Icon=mint-mechanic
+Terminal=false
+Categories=System;GTK;
+Keywords=tweak;services;cleaner;dashboard;gauges;packages;streamline;stacer;
+StartupNotify=true

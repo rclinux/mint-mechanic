@@ -97,7 +97,7 @@ Mint 22.x is built on Ubuntu 24.04 "noble", which is what the PPA targets.
 
 ```bash
 ./build-deb.sh
-sudo apt install ./dist/mint-mechanic_0.5.0_all.deb
+sudo apt install ./dist/mint-mechanic_0.6.0_all.deb
 ```
 
 **Make-install path** — the same system layout without building a package:

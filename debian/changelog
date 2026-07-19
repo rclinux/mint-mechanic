@@ -1,3 +1,17 @@
+mint-mechanic (0.8.0) noble; urgency=medium
+
+  * Add a live-session layer to the removal guard. Alongside the static list of
+    known desktops, it now detects the desktop session and login manager that
+    are actually running on this machine and refuses to remove the packages they
+    depend on. An exotic desktop the built-in list never named is still
+    protected, because it is the one drawing the screen.
+  * The layer is purely additive: a detection miss falls back to the static
+    list, so it can only ever refuse more, never less. Graphics drivers are left
+    to the static list on purpose, since the in-use driver is often a DKMS
+    module dpkg does not own.
+
+ -- Ron Craig (rclinux) <rcraig.netmail@gmail.com>  Sun, 19 Jul 2026 16:20:04 -0400
+
 mint-mechanic (0.7.0) noble; urgency=medium
 
   * Widen the removal guard beyond Cinnamon: it now refuses removals that would

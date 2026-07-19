@@ -19,6 +19,7 @@ from .actions import ActionResult, pkexec_available, run_privileged  # noqa: E40
 from .pkg import (  # noqa: E402
     critical_in,
     default_backend,
+    live_critical_packages,
     preview_failed,
     removal_preview,
 )
@@ -160,7 +161,7 @@ class UninstallerView(Gtk.Box):
         def work() -> None:
             preview = removal_preview(pkgs, purge=purge)
             failed = preview_failed(pkgs, preview)
-            critical = critical_in(preview)
+            critical = critical_in(preview, live=live_critical_packages())
             GLib.idle_add(self._previewed, pkgs, purge, preview, critical, failed)
 
         threading.Thread(target=work, daemon=True).start()

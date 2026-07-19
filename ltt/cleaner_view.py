@@ -173,7 +173,8 @@ class CleanerView(Gtk.Box):
             candidates = cleaner.orphan_list()
             preview = cleaner.purge_preview(candidates)
             failed = cleaner.purge_preview_failed(candidates, preview)
-            critical = cleaner.critical_in(preview)
+            critical = cleaner.critical_in(
+                preview, live=cleaner.live_critical_packages())
             GLib.idle_add(self._orphan_previewed, candidates, preview,
                           critical, failed)
 

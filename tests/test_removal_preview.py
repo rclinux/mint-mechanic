@@ -203,3 +203,144 @@ def test_every_exact_entry_is_a_valid_package_name():
     from ltt.pkg import CRITICAL_PACKAGES, _VALID_NAME
     bad = [p for p in CRITICAL_PACKAGES if not _VALID_NAME.match(p)]
     assert bad == []
+
+
+# =========================================================================
+# Live-session guard: protect what is RUNNING, not only what is on the list.
+#
+# The static CRITICAL_* catalogue can only protect desktops we thought to
+# name -- its one residual hole is an exotic desktop that never made the
+# list. live_critical_packages() closes that hole by asking the live system
+# what is actually drawing the screen. These tests pin BOTH directions: the
+# running session is refused however exotic, and the layer never loosens the
+# static guard nor cries wolf over ordinary applications.
+# =========================================================================
+
+from ltt.pkg import live_critical_packages
+
+
+# --------------------------------------------------- union logic (pure, no I/O)
+def test_live_layer_catches_a_desktop_the_denylist_misses():
+    """The whole point: a desktop nobody put on the static list is still
+    refused when it is the one running. `enlightenment` is on neither
+    CRITICAL_PACKAGES nor CRITICAL_PREFIXES."""
+    exotic = "enlightenment"
+    assert critical_in([exotic]) == []                       # was a hole...
+    assert critical_in([exotic], live={exotic}) == [exotic]  # ...now closed
+
+
+def test_live_layer_never_loosens_the_denylist():
+    """A detection miss (empty or absent live) leaves the static guard intact.
+    The layer can only ever refuse MORE, never less."""
+    assert critical_in(["cinnamon"], live=set()) == ["cinnamon"]
+    assert critical_in(["cinnamon"], live=None) == ["cinnamon"]
+    assert critical_in(["cinnamon"]) == ["cinnamon"]
+
+
+def test_live_layer_does_not_refuse_ordinary_packages():
+    """live is only the running session; unrelated apps stay removable even
+    while a live set is in force."""
+    assert critical_in(["vlc", "htop"],
+                       live={"cinnamon-common", "lightdm"}) == []
+
+
+def test_live_union_is_deduplicated_and_sorted():
+    """Names the live layer supplies (here not on the static list) merge, dedupe
+    and sort alongside any static hits."""
+    result = critical_in(["vlc", "icewm", "awesome", "icewm"],
+                         live={"icewm", "awesome"})
+    assert result == ["awesome", "icewm"]
+
+
+# ------------------------------------------------------- the probe (system I/O)
+def _fake_system(monkeypatch, *, execstart="", owns=None, exists=()):
+    """Simulate the probe's three system touch-points: `systemctl show` for the
+    display-manager ExecStart, `dpkg -S` for path ownership (owns: path ->
+    package; anything absent answers rc 1 like a real unowned path), and which
+    session .desktop files exist."""
+    owns = owns or {}
+
+    def run(argv, **k):
+        if argv[:2] == ["systemctl", "show"]:
+            return type("P", (), {"stdout": execstart, "returncode": 0})()
+        if argv[:2] == ["dpkg", "-S"]:
+            path = argv[2]
+            if path in owns:
+                return type("P", (), {
+                    "stdout": f"{owns[path]}: {path}\n", "returncode": 0})()
+            return type("P", (), {"stdout": "", "returncode": 1})()
+        return type("P", (), {"stdout": "", "returncode": 0})()
+
+    monkeypatch.setattr("ltt.pkg.subprocess.run", run)
+    monkeypatch.setattr("ltt.pkg.os.path.exists", lambda p: p in exists)
+
+
+def test_probe_detects_display_manager_and_session(monkeypatch):
+    monkeypatch.setenv("XDG_SESSION_DESKTOP", "cinnamon")
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    _fake_system(
+        monkeypatch,
+        execstart=("{ path=/usr/sbin/lightdm ; argv[]=/usr/sbin/lightdm ; "
+                   "ignore_errors=no ; status=0/0 }"),
+        owns={"/usr/sbin/lightdm": "lightdm",
+              "/usr/share/xsessions/cinnamon.desktop": "cinnamon-common"},
+        exists={"/usr/share/xsessions/cinnamon.desktop"},
+    )
+    assert live_critical_packages() == {"lightdm", "cinnamon-common"}
+
+
+def test_probe_ignores_a_dkms_driver_dpkg_does_not_own(monkeypatch):
+    """A running driver whose .ko belongs to no package contributes nothing --
+    it must neither fabricate a name nor raise. (dpkg -S on any path but the DM
+    binary answers rc 1 here.)"""
+    monkeypatch.delenv("XDG_SESSION_DESKTOP", raising=False)
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    _fake_system(
+        monkeypatch,
+        execstart="{ path=/usr/sbin/lightdm ; argv[]=/usr/sbin/lightdm }",
+        owns={"/usr/sbin/lightdm": "lightdm"},
+        exists=set(),
+    )
+    assert live_critical_packages() == {"lightdm"}
+
+
+def test_probe_survives_missing_systemctl(monkeypatch):
+    """No systemd, or any probe failure, must yield an empty set -- never an
+    exception that would crash the preview worker thread."""
+    monkeypatch.delenv("XDG_SESSION_DESKTOP", raising=False)
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+
+    def boom(*a, **k):
+        raise OSError("systemctl missing")
+
+    monkeypatch.setattr("ltt.pkg.subprocess.run", boom)
+    monkeypatch.setattr("ltt.pkg.os.path.exists", lambda p: False)
+    assert live_critical_packages() == set()
+
+
+def test_probe_resolves_colon_joined_current_desktop(monkeypatch):
+    """XDG_CURRENT_DESKTOP='ubuntu:GNOME' must resolve to the 'ubuntu' session
+    (split on ':'), falling back to it when XDG_SESSION_DESKTOP is unset."""
+    monkeypatch.delenv("XDG_SESSION_DESKTOP", raising=False)
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "ubuntu:GNOME")
+    _fake_system(
+        monkeypatch,
+        execstart="",
+        owns={"/usr/share/xsessions/ubuntu.desktop": "gnome-session-common"},
+        exists={"/usr/share/xsessions/ubuntu.desktop"},
+    )
+    assert live_critical_packages() == {"gnome-session-common"}
+
+
+def test_probe_strips_x_dash_prefix(monkeypatch):
+    """The real Cinnamon box reports XDG_CURRENT_DESKTOP='X-Cinnamon'; the
+    'X-' vendor prefix must be stripped to find cinnamon.desktop."""
+    monkeypatch.delenv("XDG_SESSION_DESKTOP", raising=False)
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "X-Cinnamon")
+    _fake_system(
+        monkeypatch,
+        execstart="",
+        owns={"/usr/share/xsessions/cinnamon.desktop": "cinnamon-common"},
+        exists={"/usr/share/xsessions/cinnamon.desktop"},
+    )
+    assert live_critical_packages() == {"cinnamon-common"}

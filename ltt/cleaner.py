@@ -185,6 +185,7 @@ def purge_preview(pkgs: list[str]) -> list[str]:
 
 purge_preview_failed = _pkg.preview_failed
 critical_in = _pkg.critical_in
+live_critical_packages = _pkg.live_critical_packages
 
 
 def orphan_purge_argv(pkgs: list[str]) -> list[str]:

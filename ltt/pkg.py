@@ -18,6 +18,7 @@ paths build their argv here and are wired to execution in a later phase.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -214,10 +215,95 @@ CRITICAL_PACKAGES = frozenset({
 })
 
 
-def critical_in(removals: list[str]) -> list[str]:
-    """Session-critical packages inside a removal set (empty == safe to offer)."""
+def _pkg_owning(path: str) -> str | None:
+    """The package that owns an on-disk path (via `dpkg -S`), or None.
+
+    Returns None for anything dpkg does not own -- e.g. a DKMS kernel module,
+    whose .ko is built locally and belongs to no package -- so an unowned probe
+    result simply contributes no protection rather than a wrong or empty name.
+    """
+    try:
+        out = subprocess.run(
+            ["dpkg", "-S", path],
+            capture_output=True, text=True, timeout=10, check=False)
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    # "cinnamon-common: /usr/share/xsessions/cinnamon.desktop" -> "cinnamon-common"
+    first = out.stdout.strip().splitlines()[0]
+    name = first.split(":", 1)[0].strip()
+    return name or None
+
+
+def live_critical_packages() -> set[str]:
+    """Packages the CURRENTLY RUNNING session depends on, on THIS machine.
+
+    The static CRITICAL_* lists can only protect desktops we thought to name.
+    This asks the self-updating question instead -- what is drawing the screen
+    right now? -- so an exotic desktop that never made the list is still caught,
+    because it is the one running. Purely additive: a detection miss yields an
+    empty set and the static denylist still applies, so this can only ever
+    refuse MORE, never less. Injected into critical_in() rather than called
+    inside it, so that function stays pure and this probes the system once.
+
+    Covers the two facts that map cleanly to a package -- the active display
+    manager and the running desktop session. Graphics drivers are deliberately
+    NOT probed: the in-use driver is often a DKMS module dpkg does not own (on
+    this box `nvidia.ko` lives under updates/dkms and maps to no package), so it
+    would contribute nothing. The graphics libraries stay on the static
+    CRITICAL_PACKAGES list, which is reliable.
+    """
+    live: set[str] = set()
+
+    # 1. Active display manager: unit -> its ExecStart binary -> owning package.
+    #    systemd resolves display-manager.service to whichever DM is running
+    #    (lightdm, gdm3, sddm, ...), so we never hardcode the DM.
+    try:
+        execstart = subprocess.run(
+            ["systemctl", "show", "-p", "ExecStart", "--value",
+             "display-manager.service"],
+            capture_output=True, text=True, timeout=10, check=False).stdout
+    except (subprocess.SubprocessError, OSError):
+        execstart = ""
+    # systemd prints ExecStart as "{ path=/usr/sbin/lightdm ; argv[]=... }",
+    # NOT a bare path, so read the path= field rather than scanning for a
+    # leading slash (which silently matched nothing and dropped the DM).
+    dm_path = re.search(r"path=(\S+)", execstart)
+    if dm_path and (owner := _pkg_owning(dm_path.group(1))):
+        live.add(owner)
+
+    # 2. Running desktop session: XDG_*_DESKTOP -> its session .desktop file ->
+    #    owning package. "X-Cinnamon"/"cinnamon" -> cinnamon.desktop ->
+    #    cinnamon-common. Prefer XDG_SESSION_DESKTOP (a clean single token) over
+    #    XDG_CURRENT_DESKTOP (may be colon-joined, e.g. "ubuntu:GNOME").
+    desktop = (os.environ.get("XDG_SESSION_DESKTOP")
+               or os.environ.get("XDG_CURRENT_DESKTOP", ""))
+    desktop = desktop.lower().split(":")[0].removeprefix("x-").strip()
+    if desktop:
+        for base in ("/usr/share/xsessions", "/usr/share/wayland-sessions"):
+            sess = f"{base}/{desktop}.desktop"
+            if os.path.exists(sess) and (owner := _pkg_owning(sess)):
+                live.add(owner)
+
+    return live
+
+
+def critical_in(removals: list[str], live: set[str] | None = None) -> list[str]:
+    """Session-critical packages inside a removal set (empty == safe to offer).
+
+    Two layers, unioned:
+      * the static CRITICAL_PACKAGES / CRITICAL_PREFIXES catalogue below, and
+      * `live` -- packages this machine's currently running desktop and login
+        manager depend on, as detected by live_critical_packages().
+    `live` is injected rather than fetched here so this function stays pure (the
+    unit tests rely on that) and the callers probe the system once per open.
+    Default None means denylist-only -- the original behaviour.
+    """
+    live = live or set()
     hits = [p for p in removals
             if p in CRITICAL_PACKAGES
+            or p in live
             or any(p.startswith(pre) for pre in CRITICAL_PREFIXES)]
     return sorted(set(hits))
 

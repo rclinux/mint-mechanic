@@ -4,6 +4,23 @@ All notable changes to **Mint Mechanic** are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-07-19
+
+### Added
+- **The removal guard now protects the desktop that is actually running**, not
+  only the desktops named in a built-in list. When you remove a package, Mint
+  Mechanic detects the live desktop session (via `XDG_*_DESKTOP` → its session
+  `.desktop` file) and the active display manager (via `display-manager.service`)
+  and refuses to pull out the packages they depend on. This closes the one hole
+  the static list left open: an exotic desktop nobody thought to name is still
+  refused, because it is the one drawing the screen.
+
+### Notes
+- The live layer is **purely additive** — a detection miss falls back to the
+  static list, so it can only ever refuse *more*, never less. Graphics drivers
+  are deliberately left to the static list: the in-use driver is often a DKMS
+  module `dpkg` does not own, so it maps to no package.
+
 ## [0.7.0] - 2026-07-19
 
 ### Changed

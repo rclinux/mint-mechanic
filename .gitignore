@@ -17,3 +17,11 @@ __pycache__/
 /build/
 /dist/
 *.deb
+
+# debhelper build artifacts (dpkg-buildpackage writes these into debian/)
+/debian/.debhelper/
+/debian/debhelper-build-stamp
+/debian/files
+/debian/mint-mechanic/
+/debian/*.substvars
+/debian/*.debhelper.log

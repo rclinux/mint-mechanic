@@ -8,7 +8,8 @@
 #
 # Usage:
 #   ./build-source.sh              # unsigned, for inspection
-#   ./build-source.sh --sign       # signed with the key in debian/changelog
+#   ./build-source.sh --sign       # signed; refuses unless clean, tagged and pushed
+#   ./build-source.sh --sign --force   # upload anyway (deliberate divergence)
 #   ./build-source.sh --sign --series jammy
 #
 # Output: ../mint-mechanic_<version>_source.changes  (plus .dsc and .tar.xz)
@@ -20,10 +21,12 @@ SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SRC"
 
 SIGN=0
+FORCE=0
 SERIES=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --sign)   SIGN=1 ;;
+    --force)  FORCE=1 ;;
     --series) SERIES="${2:?--series needs a value}"; shift ;;
     *) echo "unknown argument: $1" >&2; exit 1 ;;
   esac
@@ -47,6 +50,47 @@ fi
 VERSION="$(dpkg-parsechangelog -S Version)"
 TARGET="$(dpkg-parsechangelog -S Distribution)"
 echo "==> Building source package mint-mechanic ${VERSION} for ${TARGET}"
+
+# --- keep the PPA and GitHub honest ---------------------------------------- #
+#
+# The source package is built from the WORKING TREE, not from git. Nothing about
+# `dput` consults GitHub. So the only thing keeping the published package and the
+# public repository in step is that this is run from a clean tree at a pushed
+# tag -- and that is exactly the kind of discipline that quietly fails.
+#
+# It already did: 0.5.0 shipped to the PPA with a build-source.sh that differed
+# from tag v0.5.0, because a fix landed after the tag but before the upload. The
+# runtime code matched, so nobody got the wrong app -- but "nobody noticed" is
+# not a guarantee. These checks make it structural. --force overrides for a
+# deliberate exception.
+if [[ $SIGN -eq 1 && $FORCE -eq 0 ]]; then
+  fail=0
+  if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+    echo "REFUSING: working tree has uncommitted changes." >&2
+    git status --short >&2
+    fail=1
+  fi
+  head_sha="$(git rev-parse HEAD 2>/dev/null || true)"
+  tag_sha="$(git rev-parse "v${VERSION}^{commit}" 2>/dev/null || true)"
+  if [[ -z "$tag_sha" ]]; then
+    echo "REFUSING: no tag v${VERSION} — tag the release before uploading." >&2
+    fail=1
+  elif [[ "$tag_sha" != "$head_sha" ]]; then
+    echo "REFUSING: HEAD is not tag v${VERSION} (HEAD=${head_sha:0:7}, tag=${tag_sha:0:7})." >&2
+    fail=1
+  fi
+  if ! git merge-base --is-ancestor HEAD "@{upstream}" 2>/dev/null; then
+    echo "REFUSING: HEAD is not pushed — GitHub would not have what you upload." >&2
+    fail=1
+  fi
+  if [[ $fail -ne 0 ]]; then
+    echo "" >&2
+    echo "The PPA would publish code that github.com/rclinux/mint-mechanic does not have." >&2
+    echo "Fix the above, or pass --force if this divergence is deliberate." >&2
+    exit 1
+  fi
+  echo "==> Tree is clean, at tag v${VERSION}, and pushed — PPA will match GitHub."
+fi
 
 # Keep build artefacts and VCS state out of the uploaded tarball.
 EXCLUDES=(-I.git -I.github/workflows/__pycache__ -Idist -I.pytest_cache

@@ -4,6 +4,34 @@ All notable changes to **Mint Mechanic** are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-07-19
+
+### Changed
+- **The removal guard now protects desktops other than Cinnamon.** It began
+  Mint-shaped, which was fine while the only way to get the app was a manual
+  download. Publishing to a PPA makes it likely someone runs this on MATE, XFCE,
+  KDE Plasma, GNOME, Budgie or LXQt — where an unguarded cascade is just as
+  fatal. Their sessions, window managers, panels and metapackages are now
+  covered, along with the display managers `lxdm` and `slim`.
+- **Fixed a hole in graphics protection.** The guard matched a `mesa-` prefix,
+  which caught `mesa-utils` — a diagnostic tool — while *missing*
+  `libgl1-mesa-dri` and `libglx-mesa0`, the actual drivers. It was protecting
+  the toy and not the thing that matters. Those are now named explicitly and the
+  misleading prefix is gone.
+- **Desktop components are matched by exact name, not a broad prefix.** A
+  `mate-` prefix would have covered all 68 `mate-*` packages including
+  `mate-calc`, and `xfce4` all 53 including `xfce4-eyes-plugin`. Refusing to let
+  someone uninstall a calculator teaches them to ignore the guard, and an
+  ignored guard protects nothing. Prefixes are kept only where every member of
+  the family is genuinely session infrastructure (`cinnamon*`, `kwin*`,
+  `xserver-xorg*`, `nvidia-driver*`).
+
+### Added
+- 60 tests covering the widened guard: every protected desktop and display
+  manager, the graphics stack, and an explicit set of ordinary packages
+  (`mate-calc`, `xfce4-terminal`, `nemo-emblems`, `mesa-utils`, `vlc`, …) that
+  must **not** be refused.
+
 ## [0.6.0] - 2026-07-19
 
 ### Fixed

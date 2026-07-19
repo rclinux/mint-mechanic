@@ -157,18 +157,68 @@ class AptBackend(PackageBackend):
 # Priority: optional, Essential: no.
 
 # Packages whose removal costs you your desktop, your login manager or your
-# graphics driver. Matched as prefixes against the full cascade.
+# graphics driver.
+#
+# Two lists, because one shape does not fit both cases:
+#
+#   * PREFIXES for families where every member is genuinely part of the session
+#     (all `cinnamon*`, every `xserver-xorg*` driver, every `nvidia-driver*`).
+#   * EXACT names everywhere a prefix would over-match. `mate-` would match all
+#     68 mate-* packages including mate-calc; `xfce4` would match all 53
+#     including xfce4-eyes-plugin. Refusing to let someone uninstall a
+#     calculator teaches them to ignore the guard, and a guard that is ignored
+#     protects nothing.
+#
+# `mesa-` was deliberately REMOVED as a prefix: it matched mesa-utils (a
+# harmless diagnostic) while missing libgl1-mesa-dri and libglx-mesa0 -- the
+# actual drivers. It protected the toy and not the thing that matters.
 CRITICAL_PREFIXES = (
-    "cinnamon", "mint-meta-", "mint-common", "mintsystem", "mintdesktop",
-    "nemo", "muffin", "xserver-xorg", "lightdm", "mdm", "gdm3", "sddm",
-    "nvidia-driver", "xorg", "mesa-", "systemd", "network-manager",
+    # Cinnamon / Mint (this tool's home turf)
+    "cinnamon", "muffin", "mint-meta-", "mint-common", "mintsystem",
+    "mintdesktop",
+    # KWin: every kwin* package is Plasma compositor infrastructure
+    "kwin",
+    # X, display managers, graphics drivers
+    "xserver-xorg", "xorg", "lightdm", "gdm3", "sddm", "mdm",
+    "nvidia-driver",
+    # Core system plumbing
+    "systemd", "network-manager",
 )
+
+# Exact names: desktop sessions, window managers, panels and session metapackages
+# across the desktops someone might actually be running, plus the graphics
+# libraries whose names don't share a usable prefix.
+CRITICAL_PACKAGES = frozenset({
+    # Cinnamon (the file manager; nemo-* extensions stay removable)
+    "nemo",
+    # MATE
+    "mate-session-manager", "mate-panel", "mate-settings-daemon",
+    "mate-desktop", "mate-desktop-environment", "mate-core",
+    "marco", "caja", "ubuntu-mate-desktop",
+    # XFCE
+    "xfce4", "xfce4-session", "xfce4-panel", "xfce4-settings",
+    "xfdesktop4", "xfwm4", "xubuntu-desktop",
+    # KDE Plasma
+    "plasma-desktop", "plasma-workspace", "kde-plasma-desktop",
+    "kubuntu-desktop",
+    # GNOME
+    "gnome-shell", "gnome-session", "mutter", "ubuntu-desktop",
+    # Budgie / LXQt / LXDE
+    "budgie-desktop", "ubuntu-budgie-desktop",
+    "lxqt-session", "lxsession", "lubuntu-desktop",
+    # Display managers without a safe prefix
+    "lxdm", "slim",
+    # Graphics libraries the prefixes miss
+    "libgl1-mesa-dri", "libglx-mesa0", "mesa-va-drivers",
+    "mesa-vulkan-drivers",
+})
 
 
 def critical_in(removals: list[str]) -> list[str]:
     """Session-critical packages inside a removal set (empty == safe to offer)."""
     hits = [p for p in removals
-            if any(p.startswith(pre) for pre in CRITICAL_PREFIXES)]
+            if p in CRITICAL_PACKAGES
+            or any(p.startswith(pre) for pre in CRITICAL_PREFIXES)]
     return sorted(set(hits))
 
 

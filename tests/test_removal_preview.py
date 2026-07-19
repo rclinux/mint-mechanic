@@ -137,3 +137,69 @@ def test_guard_covers_desktop_login_and_graphics():
 def test_guard_is_deduplicated_and_sorted():
     assert critical_in(["cinnamon", "cinnamon", "lightdm"]) == [
         "cinnamon", "lightdm"]
+
+
+# ------------------------------------------------- desktops beyond Cinnamon
+#
+# The guard started Mint-shaped. The PPA makes it likely someone runs this on
+# MATE, XFCE, KDE or GNOME, where the same cascade would be just as fatal.
+
+@pytest.mark.parametrize("pkg", [
+    # MATE
+    "mate-session-manager", "mate-panel", "mate-settings-daemon",
+    "mate-desktop", "mate-desktop-environment", "marco", "caja",
+    "ubuntu-mate-desktop",
+    # XFCE
+    "xfce4", "xfce4-session", "xfce4-panel", "xfce4-settings",
+    "xfdesktop4", "xfwm4", "xubuntu-desktop",
+    # KDE Plasma
+    "plasma-desktop", "plasma-workspace", "kde-plasma-desktop",
+    "kubuntu-desktop", "kwin-x11", "kwin-wayland", "kwin-common",
+    # GNOME
+    "gnome-shell", "gnome-session", "mutter", "ubuntu-desktop",
+    # Budgie / LXQt / LXDE
+    "budgie-desktop", "lxqt-session", "lxsession", "lubuntu-desktop",
+    # Display managers
+    "lxdm", "slim", "lightdm", "gdm3", "sddm",
+])
+def test_other_desktops_are_protected(pkg):
+    assert critical_in([pkg]) == [pkg]
+
+
+@pytest.mark.parametrize("pkg", [
+    "libgl1-mesa-dri",      # the actual DRI driver
+    "libglx-mesa0",         # the GLX provider
+    "mesa-va-drivers",
+    "mesa-vulkan-drivers",
+    "xserver-xorg-core",
+    "nvidia-driver-595-open",
+])
+def test_graphics_stack_is_protected(pkg):
+    """`mesa-` as a prefix used to catch mesa-utils and MISS libgl1-mesa-dri --
+    protecting a diagnostic tool while leaving the real driver exposed."""
+    assert critical_in([pkg]) == [pkg]
+
+
+@pytest.mark.parametrize("pkg", [
+    # A broad `mate-` / `xfce4` prefix would wrongly catch every one of these.
+    "mate-calc", "mate-applets", "mate-backgrounds", "mate-themes",
+    "xfce4-eyes-plugin", "xfce4-clipman", "xfce4-terminal",
+    "xfce4-taskmanager", "xfce4-screenshooter",
+    # nemo is critical; its optional extensions are not.
+    "nemo-emblems", "nemo-preview",
+    # mesa-utils is a diagnostic, not a driver.
+    "mesa-utils",
+    # Ordinary applications.
+    "gnome-calculator", "vlc", "htop", "thunderbird", "ftp", "telnet",
+])
+def test_ordinary_packages_are_not_refused(pkg):
+    """A guard that cries wolf gets ignored, and an ignored guard protects
+    nothing. Refusing to uninstall a calculator is a real cost."""
+    assert critical_in([pkg]) == []
+
+
+def test_every_exact_entry_is_a_valid_package_name():
+    """Entries are compared against apt output, so a typo silently never matches."""
+    from ltt.pkg import CRITICAL_PACKAGES, _VALID_NAME
+    bad = [p for p in CRITICAL_PACKAGES if not _VALID_NAME.match(p)]
+    assert bad == []

@@ -1,3 +1,18 @@
+mint-mechanic (0.7.0) noble; urgency=medium
+
+  * Widen the removal guard beyond Cinnamon: it now refuses removals that would
+    take a MATE, XFCE, KDE Plasma, GNOME, Budgie or LXQt session, or any of the
+    display managers, with them.
+  * Protect the graphics libraries the old guard missed. Matching a "mesa-"
+    prefix caught mesa-utils, a diagnostic tool, while missing libgl1-mesa-dri
+    and libglx-mesa0 - the actual drivers.
+  * Match desktop components by exact name rather than a broad prefix, so
+    ordinary packages stay removable. A "mate-" prefix would have covered all 68
+    mate-* packages including mate-calc; refusing to uninstall a calculator
+    teaches users to ignore the guard.
+
+ -- Ron Craig (rclinux) <rcraig.netmail@gmail.com>  Sun, 19 Jul 2026 11:07:11 -0400
+
 mint-mechanic (0.6.0) noble; urgency=medium
 
   * Wrap long text in task descriptions and status lines instead of clipping it

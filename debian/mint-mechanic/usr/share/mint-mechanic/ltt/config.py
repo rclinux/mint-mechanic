@@ -9,7 +9,7 @@ APP_NAME = "Mint Mechanic"
 APP_ID = "io.github.rclinux.MintMechanic"
 APP_ICON = "mint-mechanic"
 APP_COMMAND = "mint-mechanic"
-APP_VERSION = "0.6.0"
+APP_VERSION = "0.7.0"
 APP_TAGLINE = "The maintained tune-up tool for Linux Mint"
 APP_WEBSITE = "https://github.com/rclinux/mint-mechanic"
 

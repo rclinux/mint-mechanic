@@ -90,6 +90,15 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="0.7.0" date="2026-07-19">
+      <description>
+        <p>
+          The removal guard now protects MATE, XFCE, KDE Plasma, GNOME, Budgie
+          and LXQt sessions, not just Cinnamon, and covers graphics libraries it
+          previously missed.
+        </p>
+      </description>
+    </release>
     <release version="0.6.0" date="2026-07-19">
       <description>
         <p>

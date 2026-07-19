@@ -1,0 +1,27 @@
+# Tooling configuration only — Mint Mechanic ships as a .deb (build-deb.sh) or
+# via install.sh, not as a Python distribution package.
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "C4", "S"]
+ignore = [
+    "E402",    # gi.require_version must precede the gi.repository imports
+    "S404",    # subprocess is the whole point of this tool
+    "S603",    # argv-list subprocess calls are the safe form we deliberately use
+    "S607",    # partial paths (apt-get, systemctl) resolve via PATH by design
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert on private helpers and use asserts by nature.
+"tests/*" = ["S101", "S108"]
+# The fixed, audited cleaner commands are the one place bash -c is intended;
+# every interpolated path goes through shlex.quote (see the module docstring).
+"ltt/cleaner.py" = ["S602", "S605"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Import the in-tree `ltt` package without installing it.
+pythonpath = ["."]

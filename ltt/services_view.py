@@ -21,7 +21,7 @@ from .actions import ActionResult, pkexec_available, run_privileged  # noqa: E40
 class _ServiceRowUI:
     """Holds the widgets + wiring for one service row."""
 
-    def __init__(self, view: "ServicesView", row: registry.ServiceRow) -> None:
+    def __init__(self, view: ServicesView, row: registry.ServiceRow) -> None:
         self.view = view
         self.row = row
 

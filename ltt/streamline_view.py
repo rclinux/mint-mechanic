@@ -21,7 +21,7 @@ from gi.repository import GLib, Gtk  # noqa: E402
 
 from . import profiles  # noqa: E402
 from .actions import ActionResult, pkexec_available, run_privileged  # noqa: E402
-from .pkg import default_backend  # noqa: E402
+from .pkg import default_backend, partition_names  # noqa: E402
 
 
 class StreamlineView(Gtk.Box):
@@ -128,11 +128,21 @@ class StreamlineView(Gtk.Box):
         except OSError as exc:
             self._flash(f"Could not read profile: {exc}")
             return
+        # A profile is portable and hand-editable, so treat it as untrusted:
+        # anything that isn't a valid package name is dropped before it can
+        # reach the elevated apt call, and the user is told what was dropped.
+        wanted, rejected = partition_names(wanted)
         installed = self._backend.installed_set()
         self._missing = [p for p in wanted if p not in installed]
-        self._imp_lbl.set_text(
-            f"{gfile.get_basename()}: {len(wanted)} packages, "
-            f"{len(self._missing)} not installed here.")
+        summary = (f"{gfile.get_basename()}: {len(wanted)} packages, "
+                   f"{len(self._missing)} not installed here.")
+        if rejected:
+            summary += f"  ({len(rejected)} invalid entries ignored)"
+        self._imp_lbl.set_text(summary)
+        if rejected:
+            shown = ", ".join(rejected[:3])
+            more = f" (+{len(rejected) - 3} more)" if len(rejected) > 3 else ""
+            self._flash(f"Ignored invalid entries in profile: {shown}{more}")
         self._populate_missing()
 
     def _populate_missing(self) -> None:

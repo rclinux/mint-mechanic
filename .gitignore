@@ -4,6 +4,10 @@ __pycache__/
 *.egg-info/
 .venv/
 
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+
 # Editor / OS
 *.swp
 *~

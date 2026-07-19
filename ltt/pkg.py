@@ -18,9 +18,50 @@ paths build their argv here and are wired to execution in a later phase.
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
+
+# Debian policy 5.6.1: package names are at least two characters, lowercase
+# alphanumerics plus '+', '-', '.', and must start with an alphanumeric.
+_VALID_NAME = re.compile(r"^[a-z0-9][a-z0-9+.\-]+$")
+
+
+class InvalidPackageName(ValueError):
+    """Raised when a name bound for an elevated apt call fails validation.
+
+    Package lists do not always originate on this machine: a Streamline profile
+    is explicitly a portable, hand-editable manifest meant to be carried between
+    systems. That makes it untrusted input. apt-get parses options wherever they
+    appear — including in the package-name position — so an unvalidated name
+    like `-o` followed by `APT::Update::Pre-Invoke::=<command>` becomes
+    arbitrary command execution under the pkexec prompt, which the user reads as
+    an ordinary package install. Names are validated here, at the one seam every
+    package operation passes through, and the argv adds a `--` terminator so
+    nothing downstream can be re-read as an option.
+    """
+
+    def __init__(self, names: list[str]) -> None:
+        self.names = names
+        shown = ", ".join(repr(n) for n in names[:3])
+        more = f" (+{len(names) - 3} more)" if len(names) > 3 else ""
+        super().__init__(f"invalid package name(s): {shown}{more}")
+
+
+def validate_names(pkgs: list[str]) -> list[str]:
+    """Return `pkgs` unchanged, or raise InvalidPackageName listing the bad ones."""
+    bad = [p for p in pkgs if not _VALID_NAME.match(p)]
+    if bad:
+        raise InvalidPackageName(bad)
+    return pkgs
+
+
+def partition_names(pkgs: list[str]) -> tuple[list[str], list[str]]:
+    """Split into (valid, rejected) so a caller can report rather than abort."""
+    good = [p for p in pkgs if _VALID_NAME.match(p)]
+    bad = [p for p in pkgs if not _VALID_NAME.match(p)]
+    return good, bad
 
 
 @dataclass(frozen=True)
@@ -88,12 +129,15 @@ class AptBackend(PackageBackend):
 
     def install_argv(self, pkgs: list[str]) -> list[str]:
         # Elevated per-action at call time (Phase 3+). Built here so the verb
-        # mapping lives in exactly one place.
-        return ["pkexec", "apt-get", "install", "-y", *pkgs]
+        # mapping lives in exactly one place. Names are validated and `--`
+        # terminates options — see InvalidPackageName for why that matters.
+        validate_names(pkgs)
+        return ["pkexec", "apt-get", "install", "-y", "--", *pkgs]
 
     def remove_argv(self, pkgs: list[str], purge: bool = False) -> list[str]:
         verb = "purge" if purge else "remove"
-        return ["pkexec", "apt-get", verb, "-y", *pkgs]
+        validate_names(pkgs)
+        return ["pkexec", "apt-get", verb, "-y", "--", *pkgs]
 
 
 def default_backend() -> PackageBackend:

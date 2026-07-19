@@ -11,6 +11,7 @@ deliberately absent.
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -41,12 +42,21 @@ def _sh(cmd: str) -> str:
 
 _HOME = os.path.expanduser("~")
 _TRASH = os.path.join(_HOME, ".local/share/Trash")
+_THUMBS = os.path.join(_HOME, ".cache/thumbnails")
+
+# Every path below is interpolated into a shell string, so it goes through
+# shlex.quote first. A home directory containing a space would otherwise
+# word-split — turning `rm -rf /home/jane doe/.cache/thumbnails/*` into an
+# rm against `/home/jane`, a wrong-path delete rather than a mere failure.
+# (Python's !r is repr, not shell quoting, and does not survive a path
+# containing a single quote.)
+_Q_THUMBS = shlex.quote(_THUMBS)
 
 
 def _du(path: str) -> str:
     if not os.path.exists(path):
         return "empty"
-    return _sh(f"du -sh {path!r} 2>/dev/null | cut -f1") or "—"
+    return _sh(f"du -sh {shlex.quote(path)} 2>/dev/null | cut -f1") or "—"
 
 
 def _human(n: float) -> str:
@@ -87,7 +97,7 @@ _MEASURES = {
     "orphans": lambda: (f"{n} pkgs" if (n := _sh('deborphan 2>/dev/null | wc -l'))
                         not in ("", "0") else "none"),
     "thumbnails": lambda: _content_size(
-        rf"find {os.path.expanduser('~/.cache/thumbnails')!r} -type f "
+        rf"find {_Q_THUMBS} -type f "
         r"-printf '%s\n' 2>/dev/null"),
     "trash": _trash_measure,
     "journal": lambda: (_sh("journalctl --disk-usage 2>/dev/null "
@@ -104,15 +114,19 @@ TASKS: tuple[CleanTask, ...] = (
               available=shutil.which("deborphan") is not None),
     CleanTask("thumbnails", "Thumbnail cache",
               "Cached image thumbnails (regenerated on demand).", False,
-              f"rm -rf {_HOME}/.cache/thumbnails/*"),
+              # The directory is quoted; the glob stays outside the quotes so
+              # the shell still expands it.
+              f"rm -rf {_Q_THUMBS}/*"),
     CleanTask("trash", "Trash",
               "Files in your desktop Trash.", False,
               # -mindepth 1 empties the contents (incl. bookkeeping) without a
               # dangerous glob; runs LAST so it also catches anything discarded
               # during this run.
-              f"find {_TRASH}/files {_TRASH}/info {_TRASH}/expunged "
+              f"find {shlex.quote(_TRASH + '/files')} "
+              f"{shlex.quote(_TRASH + '/info')} "
+              f"{shlex.quote(_TRASH + '/expunged')} "
               f"-mindepth 1 -delete 2>/dev/null; "
-              f"rm -f {_TRASH}/directorysizes 2>/dev/null; true"),
+              f"rm -f {shlex.quote(_TRASH + '/directorysizes')} 2>/dev/null; true"),
     CleanTask("journal", "Old system logs",
               "Vacuum the systemd journal to the last 7 days.", True,
               "journalctl --vacuum-time=7d"),

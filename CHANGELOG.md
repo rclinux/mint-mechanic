@@ -4,6 +4,46 @@ All notable changes to **Mint Mechanic** are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-07-19
+
+A security and hardening release. No new features; two real defects fixed in the
+paths that build elevated commands, and the project gains a test suite and CI.
+
+### Security
+- **Importing a Streamline profile could execute arbitrary commands as root.**
+  Package names parsed from a profile were passed unvalidated into
+  `pkexec apt-get install -y …`, and `apt-get` parses options wherever they
+  appear — including in the package-name position. A manifest containing a line
+  of `-o` followed by `APT::Update::Pre-Invoke::=<command>` therefore ran that
+  command as root behind a polkit prompt that looked like an ordinary package
+  install. This mattered precisely because a profile is designed to be portable
+  and hand-edited, which makes it untrusted input.
+
+  Package names are now validated against Debian policy (`ltt.pkg.validate_names`)
+  at the single apt seam every operation passes through, and every mutating argv
+  adds a `--` terminator so nothing downstream can be re-read as an option. The
+  Streamline view partitions an imported profile up front, dropping invalid
+  entries before they can reach an elevated call and reporting what it ignored.
+
+### Fixed
+- **Cleaner could delete against a wrong path when `$HOME` contained a space.**
+  The fixed shell commands interpolated the home directory unquoted, so a home
+  such as `/home/jane doe` word-split `rm -rf $HOME/.cache/thumbnails/*` into an
+  `rm -rf` against `/home/jane`. All interpolated paths now go through
+  `shlex.quote`; `_du()` no longer relies on Python's `repr`, which is not shell
+  quoting and does not survive a path containing a single quote.
+
+### Added
+- **Test suite** (`tests/`, 89 tests) covering the backend seams — package-name
+  validation and argv construction, profile export/import round trips, cleaner
+  quoting and size measurement, systemctl state parsing, and metrics
+  degradation. Deliberately GTK-free, so it runs headless with no PyGObject
+  stack. Both defects above have explicit regression tests.
+- **Continuous integration** (`.github/workflows/ci.yml`): lint (`ruff`), test
+  (`pytest`), and a `.deb` build checked with `lintian` on every push and pull
+  request.
+- `pyproject.toml` carrying the ruff and pytest configuration.
+
 ## [0.1.0] - 2026-07-01
 
 First release. Mint Mechanic ships its full v1 feature set — Dashboard,

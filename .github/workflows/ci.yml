@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: python -m pip install --upgrade pytest ruff psutil
+
+      - name: Lint
+        run: ruff check .
+
+      # The suite is deliberately GTK-free: it covers the backend seams (pkg,
+      # profiles, cleaner, services, metrics), so it needs no display and no
+      # PyGObject stack.
+      - name: Test
+        run: pytest -q
+
+  package:
+    name: Build .deb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev lintian
+
+      - name: Build
+        run: ./build-deb.sh
+
+      - name: Lint the package
+        run: lintian --no-tag-display-limit dist/*.deb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mint-mechanic-deb
+          path: dist/*.deb

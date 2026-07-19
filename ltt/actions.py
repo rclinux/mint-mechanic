@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import threading
 from dataclasses import dataclass
-from typing import Callable
+from collections.abc import Callable
 
 from gi.repository import GLib
 

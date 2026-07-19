@@ -1,5 +1,7 @@
 # Mint Mechanic
 
+[![CI](https://github.com/rclinux/mint-mechanic/actions/workflows/ci.yml/badge.svg)](https://github.com/rclinux/mint-mechanic/actions/workflows/ci.yml)
+
 **The maintained tune-up tool for Linux Mint.** A modern, Cinnamon-native
 successor to [Stacer](https://github.com/oguzhaninan/Stacer) (GPL-3.0, abandoned
 since 2019): a live system dashboard with animated **CPU / RAM / Disk gauges
@@ -74,7 +76,7 @@ the dependencies):
 
 ```bash
 ./build-deb.sh
-sudo apt install ./dist/mint-mechanic_0.1.0_all.deb
+sudo apt install ./dist/mint-mechanic_0.2.0_all.deb
 ```
 
 **Make-install path** — the same system layout without building a package:
@@ -92,6 +94,25 @@ sudo ./uninstall.sh    # removes them (leaves dependencies)
 
 Launch with `mint-mechanic` or from your application menu. **Don't run it as
 root** — it elevates the individual mutating actions via pkexec itself.
+
+## Development
+
+```bash
+pytest -q          # test suite (no display or PyGObject needed)
+ruff check .       # lint
+./build-deb.sh     # build the package
+```
+
+The suite covers the backend seams — the apt abstraction, profile export/import,
+cleaner tasks, systemctl state parsing, and metrics degradation — and is
+deliberately GTK-free so it runs headless in CI. Anything that builds an
+elevated command line is expected to arrive with a test.
+
+Package names bound for an elevated `apt-get` are validated in one place
+(`ltt/pkg.py`) and every mutating argv terminates its options with `--`. A
+Streamline profile is portable and hand-editable, so it is treated as untrusted
+input: the import path drops entries that aren't valid package names and tells
+you what it ignored.
 
 ## License
 

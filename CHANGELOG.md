@@ -4,6 +4,39 @@ All notable changes to **Mint Mechanic** are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims
 to follow [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-07-19
+
+Closes the last unguarded package-removal path, and moves the guard itself to
+where it belongs.
+
+### Security
+- **The Uninstaller removed packages with no preview and no confirmation.** It
+  went straight from click to `pkexec apt-get remove -y` — the same defect fixed
+  in the Cleaner in 0.3.0, in the other view. Selecting a package does not mean
+  removing only that package: apt also removes everything depending on it. On a
+  live Mint 22.3 desktop, selecting `cinnamon` alone removes 4 packages
+  including `mint-meta-cinnamon`.
+
+  The Uninstaller now computes apt's real cascade, refuses selections that would
+  take session-critical packages (desktop, login manager, graphics driver,
+  systemd, NetworkManager), and otherwise shows the full list — including how
+  many extra packages come along through dependencies — for explicit
+  confirmation. Purge and remove are previewed with the matching verb.
+
+### Changed
+- **The preview/guard machinery moved from `cleaner.py` into `pkg.py`**, the
+  project's single package seam (principle P5). `removal_preview()`,
+  `critical_in()` and `preview_failed()` now have one implementation shared by
+  the Cleaner and the Uninstaller, so the two cannot drift apart in how they
+  judge a removal. It no longer shells out through `bash -c` either — the
+  simulation runs as a plain argv list, so quoting is not a consideration.
+
+### Added
+- `tests/test_removal_preview.py` — 12 tests for the shared guard, independent
+  of either view: cascade reporting, remove-vs-purge verbs, `--` termination,
+  refusal of session-critical sets, and failing *closed* if apt's output format
+  ever changes.
+
 ## [0.3.0] - 2026-07-19
 
 An urgent safety release. **Anyone running 0.2.0 or earlier should update before

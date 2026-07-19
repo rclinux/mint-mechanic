@@ -140,6 +140,78 @@ class AptBackend(PackageBackend):
         return ["pkexec", "apt-get", verb, "-y", "--", *pkgs]
 
 
+# ------------------------------------------------------- removal blast radius
+#
+# Every path that removes packages must show what apt will ACTUALLY do before it
+# does it. This lives here, at the one package seam (P5), because both the
+# Cleaner's orphan purge and the Uninstaller need it and must not drift apart.
+#
+# Why this exists: the Cleaner once ran `deborphan | xargs -r apt-get -y purge`
+# unattended. deborphan named 27 libraries; apt's cascade removed 179 packages
+# including cinnamon, cinnamon-session, mint-meta-core, the NVIDIA driver and
+# gir1.2-gtk-4.0 -- the desktop environment and graphics stack -- from a single
+# checkbox. The user's shortlist is never the blast radius; only apt's own dry
+# run is.
+#
+# An Essential/Priority guard does NOT substitute for this: cinnamon is
+# Priority: optional, Essential: no.
+
+# Packages whose removal costs you your desktop, your login manager or your
+# graphics driver. Matched as prefixes against the full cascade.
+CRITICAL_PREFIXES = (
+    "cinnamon", "mint-meta-", "mint-common", "mintsystem", "mintdesktop",
+    "nemo", "muffin", "xserver-xorg", "lightdm", "mdm", "gdm3", "sddm",
+    "nvidia-driver", "xorg", "mesa-", "systemd", "network-manager",
+)
+
+
+def critical_in(removals: list[str]) -> list[str]:
+    """Session-critical packages inside a removal set (empty == safe to offer)."""
+    hits = [p for p in removals
+            if any(p.startswith(pre) for pre in CRITICAL_PREFIXES)]
+    return sorted(set(hits))
+
+
+def removal_preview(pkgs: list[str], purge: bool = False) -> list[str]:
+    """Every package apt would actually remove -- the true blast radius.
+
+    Runs apt's own simulation, so the cascade is apt's answer rather than our
+    guess. The returned set is normally much larger than `pkgs`.
+    """
+    if not pkgs:
+        return []
+    validate_names(pkgs)
+    verb = "purge" if purge else "remove"
+    try:
+        out = subprocess.run(
+            ["apt-get", "-s", verb, "--", *pkgs],
+            capture_output=True, text=True, timeout=60, check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return []
+    # apt marks a purge `Purg <name>` and a plain removal `Remv <name>`; accept
+    # both. Matching only one prefix yields an EMPTY preview, which reads to the
+    # user as "nothing will be removed" immediately before apt removes
+    # everything -- see preview_failed(), which makes that unrepresentable.
+    removed = []
+    for line in out.stdout.splitlines():
+        if line.startswith(("Purg ", "Remv ")):
+            parts = line.split()
+            if len(parts) > 1:
+                removed.append(parts[1])
+    return sorted(set(removed))
+
+
+def preview_failed(pkgs: list[str], preview: list[str]) -> bool:
+    """True when a preview cannot be trusted, so the caller must not proceed.
+
+    Asking to remove real packages and being told nothing would go means the
+    simulation failed (apt missing, timeout, output format changed) rather than
+    that the operation is a no-op. Callers must treat this as a hard stop.
+    """
+    return bool(pkgs) and not preview
+
+
 def default_backend() -> PackageBackend:
     """Pick the backend for this host. Mint => apt; the seam is the point."""
     if shutil.which("apt-get"):

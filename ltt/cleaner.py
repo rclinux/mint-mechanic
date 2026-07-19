@@ -16,6 +16,8 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
+from . import pkg as _pkg
+
 
 @dataclass(frozen=True)
 class CleanTask:
@@ -159,15 +161,6 @@ def tasks() -> tuple[CleanTask, ...]:
 # the real removal set with apt's own dry run and put it in front of the user,
 # plus a hard refusal when session-critical packages appear in it.
 
-# Packages whose removal would cost you your desktop, your login manager or your
-# graphics driver. Matched as prefixes against the full cascade.
-_CRITICAL_PREFIXES = (
-    "cinnamon", "mint-meta-", "mint-common", "mintsystem", "mintdesktop",
-    "nemo", "muffin", "xserver-xorg", "lightdm", "mdm", "gdm3", "sddm",
-    "nvidia-driver", "xorg", "mesa-", "systemd", "network-manager",
-)
-
-
 def orphan_list() -> list[str]:
     """deborphan's candidates, normalised and validated.
 
@@ -183,51 +176,15 @@ def orphan_list() -> list[str]:
     return sorted(set(good))
 
 
+# The preview/guard machinery lives in ltt.pkg (P5: one package seam). These
+# thin aliases keep the Cleaner's vocabulary while guaranteeing the Cleaner and
+# the Uninstaller can never drift apart in how they judge a removal.
 def purge_preview(pkgs: list[str]) -> list[str]:
-    """Every package apt would actually remove -- the true blast radius.
-
-    Uses apt's own simulation, so the cascade is apt's answer rather than our
-    guess. Returns the full removal set, which is normally much larger than
-    `pkgs`.
-    """
-    from .pkg import validate_names
-
-    if not pkgs:
-        return []
-    validate_names(pkgs)
-    # apt's simulation marks a purge with `Purg <name>` and a plain removal with
-    # `Remv <name>`; accept both. Getting this prefix wrong is dangerous in the
-    # worst direction -- an unmatched prefix yields an EMPTY preview, which reads
-    # to the user as "nothing will be removed" immediately before apt removes
-    # everything. The preview is only a safeguard if it can never silently
-    # under-report, so purge_preview_failed() distinguishes "nothing to do" from
-    # "could not determine", and the view refuses to proceed on the latter.
-    out = _sh("apt-get -s purge -- " + " ".join(shlex.quote(p) for p in pkgs),
-              timeout=60)
-    removed = []
-    for line in out.splitlines():
-        if line.startswith(("Purg ", "Remv ")):
-            parts = line.split()
-            if len(parts) > 1:
-                removed.append(parts[1])
-    return sorted(set(removed))
+    return _pkg.removal_preview(pkgs, purge=True)
 
 
-def purge_preview_failed(pkgs: list[str], preview: list[str]) -> bool:
-    """True when a preview cannot be trusted, so the caller must not proceed.
-
-    Asking to purge real packages and being told nothing would be removed means
-    the simulation failed (apt missing, timeout, output format changed) rather
-    than that the operation is a no-op.
-    """
-    return bool(pkgs) and not preview
-
-
-def critical_in(removals: list[str]) -> list[str]:
-    """Session-critical packages inside a removal set (empty == safe to offer)."""
-    hits = [p for p in removals
-            if any(p.startswith(pre) for pre in _CRITICAL_PREFIXES)]
-    return sorted(set(hits))
+purge_preview_failed = _pkg.preview_failed
+critical_in = _pkg.critical_in
 
 
 def orphan_purge_argv(pkgs: list[str]) -> list[str]:

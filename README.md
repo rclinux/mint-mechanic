@@ -39,7 +39,9 @@ doesn't ship — and topped with package-profile export tied to disaster recover
   outright if it would take your desktop, login manager or graphics driver with
   it — `deborphan`'s shortlist is not the real blast radius.
 - **Uninstaller** — search the manually-installed package set and remove or
-  purge a selection.
+  purge a selection. Like the Cleaner, it shows apt's full removal cascade
+  before doing anything and refuses selections that would take session-critical
+  packages with them — selecting one package rarely means removing only one.
 - **Streamline** — export your manually-installed package set to a portable,
   timestamped manifest, or import one to diff against this machine and install
   what's missing.
@@ -79,7 +81,7 @@ the dependencies):
 
 ```bash
 ./build-deb.sh
-sudo apt install ./dist/mint-mechanic_0.3.0_all.deb
+sudo apt install ./dist/mint-mechanic_0.4.0_all.deb
 ```
 
 **Make-install path** — the same system layout without building a package:
@@ -116,6 +118,13 @@ Package names bound for an elevated `apt-get` are validated in one place
 Streamline profile is portable and hand-editable, so it is treated as untrusted
 input: the import path drops entries that aren't valid package names and tells
 you what it ignored.
+
+Anything that removes packages goes through `pkg.removal_preview()` — apt's own
+dry run — and must show that cascade and be confirmed. `pkg.critical_in()`
+refuses sets touching the desktop, login manager, graphics driver, systemd or
+NetworkManager, and `pkg.preview_failed()` makes an uncomputable preview a hard
+stop rather than a silent "nothing to remove". Both the Cleaner and the
+Uninstaller share that one implementation so they cannot drift apart.
 
 ## License
 

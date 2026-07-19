@@ -8,13 +8,20 @@ and the selection persists across searches.
 
 from __future__ import annotations
 
+import threading
+
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import GLib, Gtk  # noqa: E402
 
 from .actions import ActionResult, pkexec_available, run_privileged  # noqa: E402
-from .pkg import default_backend  # noqa: E402
+from .pkg import (  # noqa: E402
+    critical_in,
+    default_backend,
+    preview_failed,
+    removal_preview,
+)
 
 _MAX_RESULTS = 400
 
@@ -133,9 +140,79 @@ class UninstallerView(Gtk.Box):
         self._busy = True
         self._remove_btn.set_sensitive(False)
         pkgs = sorted(self._selected)
+        purge = self._purge.get_active()
+        self._status.set_text("Checking what would be removed…")
+        self._begin_preview(pkgs, purge)
+
+    # ------------------------------------------------------- blast radius first
+    def _begin_preview(self, pkgs: list[str], purge: bool) -> None:
+        """Never remove what the user hasn't seen in full.
+
+        Selecting a package does not mean selecting only that package: apt also
+        removes everything depending on it. `cinnamon` alone pulls out
+        mint-meta-cinnamon and more. The cascade is computed off-thread with
+        apt's own dry run (see ltt.pkg.removal_preview).
+        """
+        def work() -> None:
+            preview = removal_preview(pkgs, purge=purge)
+            failed = preview_failed(pkgs, preview)
+            critical = critical_in(preview)
+            GLib.idle_add(self._previewed, pkgs, purge, preview, critical, failed)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _previewed(self, pkgs: list[str], purge: bool, preview: list[str],
+                   critical: list[str], failed: bool) -> None:
+        if failed:
+            # An empty preview for a real request means the simulation failed,
+            # not that there is nothing to do. Never proceed on that.
+            self._abort("Could not determine what would be removed — "
+                        "nothing was removed.")
+            return
+        if critical:
+            shown = ", ".join(critical[:4])
+            more = f" and {len(critical) - 4} more" if len(critical) > 4 else ""
+            self._abort(
+                f"Refused: this would also remove {shown}{more} — your desktop "
+                f"or graphics stack. Nothing was removed.")
+            return
+        self._confirm(pkgs, purge, preview)
+
+    def _confirm(self, pkgs: list[str], purge: bool, preview: list[str]) -> None:
+        extra = len(preview) - len(pkgs)
+        verb = "purge" if purge else "remove"
+        detail = (f"You selected {len(pkgs)}, but apt would {verb} "
+                  f"{len(preview)} packages in total"
+                  + (f" ({extra} additional through dependencies)" if extra > 0
+                     else "") + ".\n\n"
+                  + ", ".join(preview[:40])
+                  + (f"\n\n…and {len(preview) - 40} more."
+                     if len(preview) > 40 else ""))
+        dlg = Gtk.AlertDialog()
+        dlg.set_modal(True)
+        dlg.set_message(f"{verb.capitalize()} {len(preview)} packages?")
+        dlg.set_detail(detail)
+        dlg.set_buttons(["Cancel", f"{verb.capitalize()} them"])
+        dlg.set_default_button(0)
+        dlg.set_cancel_button(0)
+        dlg.choose(self.get_root(), None,
+                   lambda d, r: self._on_choice(d, r, pkgs, purge))
+
+    def _on_choice(self, dlg, result, pkgs: list[str], purge: bool) -> None:
+        try:
+            choice = dlg.choose_finish(result)
+        except GLib.Error:
+            choice = 0
+        if choice != 1:
+            self._abort("Cancelled — nothing was removed.")
+            return
         self._status.set_text(f"Authorizing removal of {len(pkgs)} packages…")
-        argv = self._backend.remove_argv(pkgs, purge=self._purge.get_active())
-        run_privileged(argv, self._done)
+        run_privileged(self._backend.remove_argv(pkgs, purge=purge), self._done)
+
+    def _abort(self, message: str) -> None:
+        self._busy = False
+        self._status.set_text(message)
+        self._sync_button()
 
     def _done(self, res: ActionResult) -> None:
         self._busy = False

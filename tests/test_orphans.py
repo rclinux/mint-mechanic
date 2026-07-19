@@ -35,14 +35,23 @@ Purg p7zip [16.02+transitional.1]
 """
 
 
-def fake_sh(monkeypatch, output):
+def fake_apt(monkeypatch, output):
+    """Stand in for apt's simulation, which runs in ltt.pkg (the one seam)."""
+    monkeypatch.setattr(
+        "ltt.pkg.subprocess.run",
+        lambda *a, **k: type("P", (), {"stdout": output, "returncode": 0})(),
+    )
+
+
+def fake_deborphan(monkeypatch, output):
+    """Stand in for deborphan, which the Cleaner still shells out to itself."""
     monkeypatch.setattr(cleaner, "_sh", lambda cmd, timeout=8: output)
 
 
 # ------------------------------------------------------------------ preview
 def test_preview_reports_aptes_full_cascade(monkeypatch):
     """The whole point: 3 candidates, 8 actual removals."""
-    fake_sh(monkeypatch, REAL_CASCADE)
+    fake_apt(monkeypatch, REAL_CASCADE)
     preview = cleaner.purge_preview(["ftp", "gir1.2-adw-1", "telnet"])
     assert len(preview) == 8
     assert "cinnamon" in preview
@@ -55,17 +64,17 @@ def test_preview_accepts_remv_as_well_as_purg(monkeypatch):
     Matching only one prefix yields an EMPTY preview -- which reads as
     'nothing will be removed' immediately before apt removes everything.
     """
-    fake_sh(monkeypatch, "Remv foo [1.0]\nPurg bar [2.0]\n")
+    fake_apt(monkeypatch, "Remv foo [1.0]\nPurg bar [2.0]\n")
     assert cleaner.purge_preview(["foo"]) == ["bar", "foo"]
 
 
 def test_preview_of_nothing_is_empty(monkeypatch):
-    fake_sh(monkeypatch, "")
+    fake_apt(monkeypatch, "")
     assert cleaner.purge_preview([]) == []
 
 
 def test_preview_validates_names(monkeypatch):
-    fake_sh(monkeypatch, "")
+    fake_apt(monkeypatch, "")
     with pytest.raises(InvalidPackageName):
         cleaner.purge_preview(["-o", "APT::Update::Pre-Invoke::=touch /tmp/x"])
 
@@ -86,7 +95,7 @@ def test_populated_preview_is_not_a_failure():
 
 def test_a_broken_simulation_reads_as_failure_not_as_no_op(monkeypatch):
     """apt missing / timed out / output format changed -> _sh returns ''."""
-    fake_sh(monkeypatch, "")
+    fake_apt(monkeypatch, "")
     candidates = ["ftp", "telnet"]
     preview = cleaner.purge_preview(candidates)
     assert cleaner.purge_preview_failed(candidates, preview) is True
@@ -113,7 +122,7 @@ def test_session_critical_packages_are_caught(pkg):
 
 def test_the_actual_disaster_would_be_refused(monkeypatch):
     """End-to-end: the real cascade must trip the guard."""
-    fake_sh(monkeypatch, REAL_CASCADE)
+    fake_apt(monkeypatch, REAL_CASCADE)
     preview = cleaner.purge_preview(["ftp", "gir1.2-adw-1"])
     critical = cleaner.critical_in(preview)
     assert critical, "the guard MUST refuse this cascade"
@@ -123,7 +132,7 @@ def test_the_actual_disaster_would_be_refused(monkeypatch):
 
 def test_a_genuinely_harmless_cascade_is_allowed(monkeypatch):
     """The guard must not refuse everything, or it just gets ignored."""
-    fake_sh(monkeypatch, HARMLESS_CASCADE)
+    fake_apt(monkeypatch, HARMLESS_CASCADE)
     preview = cleaner.purge_preview(["ftp", "telnet", "p7zip"])
     assert cleaner.critical_in(preview) == []
 
@@ -140,12 +149,12 @@ def test_priority_would_not_have_saved_us():
 # ------------------------------------------------------------------- plumbing
 def test_orphan_list_strips_arch_qualifiers(monkeypatch):
     """deborphan prints `name:arch`, which is not a valid package name."""
-    fake_sh(monkeypatch, "ftp:all\ngir1.2-adw-1:amd64\ntelnet:all\n")
+    fake_deborphan(monkeypatch, "ftp:all\ngir1.2-adw-1:amd64\ntelnet:all\n")
     assert cleaner.orphan_list() == ["ftp", "gir1.2-adw-1", "telnet"]
 
 
 def test_orphan_list_drops_unparseable_entries(monkeypatch):
-    fake_sh(monkeypatch, "ftp:all\n-o\n\nUPPER:amd64\n")
+    fake_deborphan(monkeypatch, "ftp:all\n-o\n\nUPPER:amd64\n")
     assert cleaner.orphan_list() == ["ftp"]
 
 
